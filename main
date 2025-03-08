@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# imports:
+##########
+source ./scripts/db_table
+source ./scripts/menu
+
+########################################################################################
+
+dbs_path="$(pwd)/DBs/"
+create $dbs_path
+
+db_menu
+
+
+
