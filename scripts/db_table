@@ -6,36 +6,16 @@
 ###################
 
 # $1: Database
-is_empty_db() {
+is_empty() {
 	for item in "$1"/*
 	do
-		if [[ -f "$item" ]]
-		then
-			is_empty_table "$item"
-		elif [[ -d "$item"  ]]
-		then
-			is_empty_db "$item"
-		else
-			echo -n
-		fi
-		
-		if [[ $? -eq 1 ]]
+		if [[ -s "$item" ]]
 		then
 			return 1
 		fi
 	done
 	return 0
 }
-
-# $1: Table
-is_empty_table() {
-    if [[ -s "$1" ]]
-    then
-        return 1
-    fi
-    return 0
-}
-
 
 ########################################################################################
 
@@ -44,12 +24,12 @@ is_empty_table() {
 
 # $1: Database or Table to be created
 # $2: 'db': Database, 'table': Table
-# $3: success message
-# $4: error message
 create() {
+	name=$(basename $1)
+	
 	if [[ -e "$1" ]]
 	then
-		echo "$4"
+		echo "$name already exists."
 		return 1
 	fi
 
@@ -64,51 +44,52 @@ create() {
 		return 1
 	fi
 	
-	echo "$3"
+	echo "'$name' created successfully."
 	return 0
-}
-
-# $1: Database or Table to be checked
-check() {
-	if [[ -e "$1" ]]
-	then
-		return 0
-	fi
-
-	return 1
 }
 
 # $1: Database or Table to be deleted
 # $2: 'db': Database, 'table': Table
-# $3: success message
-# $4: error message
 delete() {
+	name=$(basename $1)
+	del='y'
+	
     if [[ ! -e "$1" ]]
     then
-        echo "$4"
+        echo "'$name' does not exist."
         return 1
     fi
 
     if [[ $2 == "db" ]]
     then
-        if ! is_empty_db "$1"
+        if ! is_empty "$1"
         then
             echo "The Database is not empty, are you sure you want to delete it?"
+            read -n 1 -p"press [y/Y] to confirm delete and any other key to cancel: " del
+            echo
         fi
     elif [[ $2 == "table" ]]
     then
-        if ! is_empty_table "$1"
+        if [[ -s "$1" ]]
         then
             echo "The Table is not empty, are you sure you want to delete it?"
+            read -n 1 -p"press [y/Y] to confirm delete and any other key to cancel: " del
+            echo
         fi
     else
         echo "Invalid Type."
         return 1
     fi
     
-    rm -r "$1"
-    echo "$3"
-    return 0
+    if [[ $del == [yY] ]]
+    then
+		rm -r "$1"
+		echo "'$name' is deleted successfully."
+		return 0
+	else
+		echo "delete canceled"
+		return 1
+	fi
 }
 
 
@@ -116,8 +97,15 @@ delete() {
 # $2: old name
 rename(){
 	read -p "Please enter the new name: " new_name
+	if [[ -e "$1"/"$new_name" ]]
+	then
+		echo "$new_name already exists"
+		return 1
+	fi
+	
 	mv "$1/$2" "$1/$new_name"
 	echo "'$2' is renamed successfully to '$new_name'"
+	return 0
 }
 
 
@@ -126,6 +114,5 @@ rename(){
 # exports:
 ##########
 export -f create
-export -f check
 export -f delete
 export -f rename

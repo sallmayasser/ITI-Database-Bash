@@ -23,13 +23,13 @@ db_menu() {
 		case $option in
 		1)
 			read -p "Please enter the name of the Database you want to create: " db_name
-			create "$dbs_path/$db_name" "db" "'$db_name' created successfully." "$db_name' already exists."
+			create "$dbs_path/$db_name" "db"
 			sleep 2
 			;;
 		2)
 			read -p "Please enter the name of the Database you want to select: " db_name
 			
-			if check "$dbs_path/$db_name"
+			if [[ -e "$dbs_path/$db_name" ]]
 			then
 				table_menu "$db_name"
 			else
@@ -40,7 +40,7 @@ db_menu() {
 		3)
 			read -p "Please enter the name of the Database you want to rename: " db_name
 			
-			if check "$dbs_path/$db_name"
+			if [[ -e "$dbs_path/$db_name" ]]
 			then
 				rename "$dbs_path" "$db_name"
 			else
@@ -50,7 +50,7 @@ db_menu() {
 			;;
 		4)
 			read -p "Please enter the name of the Database you want to delete: " db_name
-			delete "$dbs_path/$db_name" "db" "'$db_name' is deleted successfully." "'$db_name' does not exist."
+			delete "$dbs_path/$db_name" "db"
 			sleep 2
 			;;
 		5)
@@ -86,13 +86,13 @@ table_menu(){
 		1)
 			# metadata?
 			read -p "Please enter the name of the Table you want to create: " table_name
-			create "$db_path/$table_name" "table" "'$table_name' created successfully." "$table_name already exists."
+			create "$db_path/$table_name" "table"
 			sleep 2
 			;;
 		2)
 			read -p "Please enter the name of the Table you want to select: " table_name
 			
-			if check "$db_path/$table_name"
+			if [[ -e "$db_path/$table_name" ]]
 			then
 				# what to do here?
 				echo "$table_name selected"
@@ -105,7 +105,7 @@ table_menu(){
 		3)
 			read -p "Please enter the name of the Table you want to rename: " table_name
 			
-			if check "$db_path/$table_name"
+			if [[ -e "$db_path/$table_name" ]]
 			then
 				rename "$db_path" "$table_name"
 			else
@@ -115,7 +115,7 @@ table_menu(){
 			;;
 		4)
 			read -p "Please enter the name of the Table you want to delete: " table_name
-			delete "$db_path/$table_name" "table" "'$table_name' is deleted successfully." "'$table_name' does not exist."
+			delete "$db_path/$table_name" "table"
 			sleep 2
 			;;
 		5)
