@@ -23,7 +23,7 @@ db_menu() {
 		case $option in
 		1)
 			read -p "Please enter the name of the Database you want to create: " db_name
-			create "$dbs_path/$db_name" "db"
+			create "$dbs_path" "$db_name" "db"
 			sleep 2
 			;;
 		2)
@@ -50,7 +50,7 @@ db_menu() {
 			;;
 		4)
 			read -p "Please enter the name of the Database you want to delete: " db_name
-			delete "$dbs_path/$db_name" "db"
+			delete "$dbs_path" "$db_name" "db"
 			sleep 2
 			;;
 		5)
@@ -86,7 +86,7 @@ table_menu(){
 		1)
 			# metadata?
 			read -p "Please enter the name of the Table you want to create: " table_name
-			create "$db_path/$table_name" "table"
+			create "$db_path" "$table_name" "table"
 			sleep 2
 			;;
 		2)
@@ -115,7 +115,7 @@ table_menu(){
 			;;
 		4)
 			read -p "Please enter the name of the Table you want to delete: " table_name
-			delete "$db_path/$table_name" "table"
+			delete "$db_path" "$table_name" "table"
 			sleep 2
 			;;
 		5)

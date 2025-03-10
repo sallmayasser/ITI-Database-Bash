@@ -6,6 +6,7 @@
 ###################
 
 # $1: Database
+# codes: {0: empty, 1: not empty}
 is_empty() {
 	for item in "$1"/*
 	do
@@ -22,55 +23,59 @@ is_empty() {
 # main functions:
 #################
 
-# $1: Database or Table to be created
-# $2: 'db': Database, 'table': Table
+# $1: parent directory
+# $2: Database or Table to be created
+# $3: 'db': Database, 'table': Table
 create() {
-	name=$(basename $1)
-	
-	if [[ -e "$1" ]]
+	if [[ -z $2 ]]
 	then
-		echo "$name already exists."
+		echo "Name cannot be whitespace"
+		return 1
+	elif [[ -e "$1"/"$2" ]]
+	then
+		echo "'$2' already exists."
 		return 1
 	fi
 
-	if [[ $2 == 'db' ]]
+	if [[ $3 == 'db' ]]
 	then
-		mkdir "$1"
-	elif [[ $2 == 'table' ]]
+		mkdir "$1"/"$2"
+	elif [[ $3 == 'table' ]]
 	then
-		touch "$1"
-	else
-        echo "Invalid Type."
-		return 1
+		touch "$1"/"$2"
 	fi
 	
-	echo "'$name' created successfully."
+	echo "'$2' created successfully."
 	return 0
 }
 
-# $1: Database or Table to be deleted
-# $2: 'db': Database, 'table': Table
+# $1: parent directory
+# $2: Database or Table to be created
+# $3: 'db': Database, 'table': Table
 delete() {
-	name=$(basename $1)
 	del='y'
 	
-    if [[ ! -e "$1" ]]
+    if [[ -z $2 ]]
+	then
+		echo "Name cannot be whitespace"
+		return 1
+    elif [[ ! -e "$1"/"$2" ]]
     then
         echo "'$name' does not exist."
         return 1
     fi
 
-    if [[ $2 == "db" ]]
+    if [[ $3 == "db" ]]
     then
-        if ! is_empty "$1"
+        if ! is_empty "$1"/"$2"
         then
             echo "The Database is not empty, are you sure you want to delete it?"
             read -n 1 -p"press [y/Y] to confirm delete and any other key to cancel: " del
             echo
         fi
-    elif [[ $2 == "table" ]]
+    elif [[ $3 == "table" ]]
     then
-        if [[ -s "$1" ]]
+        if [[ -s "$1"/"$2" ]]
         then
             echo "The Table is not empty, are you sure you want to delete it?"
             read -n 1 -p"press [y/Y] to confirm delete and any other key to cancel: " del
@@ -83,8 +88,8 @@ delete() {
     
     if [[ $del == [yY] ]]
     then
-		rm -r "$1"
-		echo "'$name' is deleted successfully."
+		rm -r "$1"/"$2"
+		echo "'$2' is deleted successfully."
 		return 0
 	else
 		echo "delete canceled"
@@ -97,7 +102,11 @@ delete() {
 # $2: old name
 rename(){
 	read -p "Please enter the new name: " new_name
-	if [[ -e "$1"/"$new_name" ]]
+	if [[ -z new_name ]]
+	then
+		echo "Invalid Name"
+		return 1
+	elif [[ -e "$1"/"$new_name" ]]
 	then
 		echo "$new_name already exists"
 		return 1

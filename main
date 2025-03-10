@@ -8,7 +8,10 @@ source ./scripts/menu
 ########################################################################################
 
 dbs_path="$(pwd)/DBs/"
-create $dbs_path
+if [[ ! -e "$dbs_path" ]]
+then
+	mkdir "$dbs_path"
+fi
 
 db_menu
 
