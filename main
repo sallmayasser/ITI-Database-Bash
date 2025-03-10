@@ -8,12 +8,6 @@ source ./scripts/menu
 ########################################################################################
 
 dbs_path="$(pwd)/DBs/"
-if [[ ! -e "$dbs_path" ]]
-then
-	mkdir "$dbs_path"
-fi
+[[ ! -e "$dbs_path" ]] && mkdir "$dbs_path"
 
 db_menu
-
-
-

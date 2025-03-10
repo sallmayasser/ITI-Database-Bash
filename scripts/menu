@@ -7,126 +7,103 @@ source ./db_table
 ########################################################################################
 
 db_menu() {
-	while true
-	do
-		clear
-		echo "Welcome to our DBMS, select what you want to do:"
-		echo "1) Create Database."
-		echo "2) Select Database."
-		echo "3) Rename Database."
-		echo "4) Delete Database."
-		echo "5) Exit BDMS."
-
-		read -n 1 option
-		clear
-	
-		case $option in
-		1)
-			read -p "Please enter the name of the Database you want to create: " db_name
-			create "$dbs_path" "$db_name" "db"
-			sleep 2
-			;;
-		2)
-			read -p "Please enter the name of the Database you want to select: " db_name
-			
-			if [[ -e "$dbs_path/$db_name" ]]
-			then
-				table_menu "$db_name"
-			else
-				echo "'$db_name' does not exist."
-				sleep 2
-			fi
-			;;
-		3)
-			read -p "Please enter the name of the Database you want to rename: " db_name
-			
-			if [[ -e "$dbs_path/$db_name" ]]
-			then
-				rename "$dbs_path" "$db_name"
-			else
-				echo "'$db_name' does not exist."
-			fi
-			sleep 2
-			;;
-		4)
-			read -p "Please enter the name of the Database you want to delete: " db_name
-			delete "$dbs_path" "$db_name" "db"
-			sleep 2
-			;;
-		5)
-			echo Goodbye!
-			sleep 2
-			break
-			;;
-		*)
-            echo "Invalid option. Please try again."
-            sleep 2
+    while true
+    do
+        clear
+        echo "Welcome to our DBMS, select what you want to do:"
+        echo "1) Create Database."
+        echo "2) Select Database."
+        echo "3) Rename Database."
+        echo "4) Delete Database."
+        echo "5) Exit BDMS."
+        
+        read -n 1 option
+        clear
+        
+        case $option in
+            1)
+                read -p "Please enter the name of the Database you want to create: " db_name
+                create "$dbs_path" "$db_name" "db"
+                sleep 2
             ;;
-		esac
-	done
+            2)
+                read -p "Please enter the name of the Database you want to select: " db_name
+                [[ -z $db_name ]] && { echo "Name cannot be whitespace"; sleep 2; continue;}
+                ([[ ! -e "$dbs_path/$db_name" ]] && { echo "'$db_name' does not exist."; sleep 2; }) || table_menu "$db_name"
+            ;;
+            3)
+                read -p "Please enter the name of the Database you want to rename: " db_name
+                [[ -z $db_name ]] && { echo "Name cannot be whitespace"; sleep 2; continue;}
+                ([[ ! -e "$dbs_path/$db_name" ]] && echo "'$db_name' does not exist." ) || rename "$dbs_path" "$db_name"
+                sleep 2
+            ;;
+            4)
+                read -p "Please enter the name of the Database you want to delete: " db_name
+                delete "$dbs_path" "$db_name" "db"
+                sleep 2
+            ;;
+            5)
+                echo Goodbye!
+                sleep 2
+                break
+            ;;
+            *)
+                echo "Invalid option. Please try again."
+                sleep 2
+            ;;
+        esac
+    done
 }
 
 table_menu(){
-	db_path="$dbs_path/$1"
-	
-	while true
-	do
-		clear
-		echo "Select what you want to do in Database '"$1"':"
-		echo "1) Create Table."
-		echo "2) Select Table."
-		echo "3) Rename Table."
-		echo "4) Delete Table."
-		echo "5) Return to Main Menu."
-
-		read -n 1 option
-		clear
-
-		case $option in
-		1)
-			# metadata?
-			read -p "Please enter the name of the Table you want to create: " table_name
-			create "$db_path" "$table_name" "table"
-			sleep 2
-			;;
-		2)
-			read -p "Please enter the name of the Table you want to select: " table_name
-			
-			if [[ -e "$db_path/$table_name" ]]
-			then
-				# what to do here?
-				echo "$table_name selected"
-				sleep 2
-			else
-				echo "'$table_name' does not exist."
-				sleep 2
-			fi
-			;;
-		3)
-			read -p "Please enter the name of the Table you want to rename: " table_name
-			
-			if [[ -e "$db_path/$table_name" ]]
-			then
-				rename "$db_path" "$table_name"
-			else
-				echo "'$table_name' does not exist."
-			fi
-			sleep 2
-			;;
-		4)
-			read -p "Please enter the name of the Table you want to delete: " table_name
-			delete "$db_path" "$table_name" "table"
-			sleep 2
-			;;
-		5)
-			break
-			;;
-		*)
-            echo "Invalid option. Please try again."
-            sleep 2
+    db_path="$dbs_path/$1"
+    while true
+    do
+        clear
+        echo "Select what you want to do in Database '"$1"':"
+        echo "1) Create Table."
+        echo "2) Select Table."
+        echo "3) Rename Table."
+        echo "4) Delete Table."
+        echo "5) Return to Main Menu."
+        
+        read -n 1 option
+        clear
+        
+        case $option in
+            1)
+                # metadata?
+                read -p "Please enter the name of the Table you want to create: " table_name
+                create "$db_path" "$table_name" "table"
+                sleep 2
             ;;
-		esac
-	done
+            2)
+                # what to do here?
+                read -p "Please enter the name of the Table you want to select: " table_name
+                [[ -z $table_name ]] && { echo "Name cannot be whitespace"; sleep 2; continue;}
+                ([[ ! -e "$db_path/$table_name" ]] && echo "'$table_name' does not exist." ) || echo "$table_name selected"
+                sleep 2
+            ;;
+            3)
+                read -p "Please enter the name of the Table you want to rename: " table_name
+                [[ -z $table_name ]] && { echo "Name cannot be whitespace"; sleep 2; continue;}
+                ([[ ! -e "$db_path/$table_name" ]] && echo "'$table_name' does not exist." ) || rename "$db_path" "$table_name"
+                sleep 2
+            ;;
+            4)
+                read -p "Please enter the name of the Table you want to delete: " table_name
+                delete "$db_path" "$table_name" "table"
+                sleep 2
+            ;;
+            5)
+                break
+            ;;
+            *)
+                echo "Invalid option. Please try again."
+                sleep 2
+            ;;
+        esac
+    done
 }
 
 
