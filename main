@@ -2,12 +2,11 @@
 
 # imports:
 ##########
-source ./scripts/db_table
 source ./scripts/menu
 
 ########################################################################################
 
-dbs_path="$(pwd)/DBs/"
+dbs_path="$(pwd)/.DBs/"
 [[ ! -e "$dbs_path" ]] && mkdir "$dbs_path"
 
 db_menu
