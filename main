@@ -3,10 +3,13 @@
 # imports:
 ##########
 source ./scripts/menu
+source ./scripts/db_table
 
 ########################################################################################
 
+# Initialize Parent Directory
 dbs_path="$(pwd)/.DBs/"
 [[ ! -e "$dbs_path" ]] && mkdir "$dbs_path"
 
 db_menu
+

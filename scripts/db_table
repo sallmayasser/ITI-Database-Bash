@@ -44,7 +44,8 @@ delete() {
     if { [[ $3 == "db" ]] && ! is_empty "$1/$2"; } || { [[ $3 == "table" ]] && [[ -s "$1/$2" ]] }
     then
         echo "'$2' is not empty, are you sure you want to delete it?"
-        read -n 1 -p "press [y/Y] to confirm delete and any other key to cancel: " del
+        read -s -t 0.1 -N 999999
+        read -s -n 1 -p "press [y/Y] to confirm delete and any other key to cancel: " del
         echo
     fi
     
@@ -59,6 +60,7 @@ delete() {
 # $1: parent directory
 # $2: old name
 rename(){
+    read -s -t 0.1 -N 999999
     read -p "Please enter the new name: " new_name
     [[ -z "$new_name" ]] && { echo "Name cannot be whitespace"; return 1; }
     [[ -e "$1/$new_name" ]] && { echo "'$new_name' already exists"; return 1; }
@@ -69,11 +71,3 @@ rename(){
     return 0
 }
 
-
-########################################################################################
-
-# exports:
-##########
-export -f create
-export -f delete
-export -f rename

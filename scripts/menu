@@ -1,9 +1,5 @@
 #!/usr/bin/bash
 
-# imports:
-##########
-source ./scripts/db_table
-
 ########################################################################################
 
 db_menu() {
@@ -18,27 +14,32 @@ db_menu() {
         echo "5) View Databases."
         echo "6) Exit BDMS."
         
-        read -n 1 option
+        read -s -t 0.1 -N 999999
+        read -s -n 1 option
         clear
         
         case $option in
             1)
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Database you want to create: " db_name
                 create "$dbs_path" "$db_name" "db"
                 sleep 2
             ;;
             2)
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Database you want to select: " db_name
                 [[ -z "$db_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
                 ([[ ! -e "$dbs_path/$db_name" ]] && { echo "'$db_name' does not exist."; sleep 2; }) || table_menu "$db_name"
             ;;
             3)
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Database you want to rename: " db_name
                 [[ -z "$db_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
                 ([[ ! -e "$dbs_path/$db_name" ]] && echo "'$db_name' does not exist." ) || rename "$dbs_path" "$db_name"
                 sleep 2
             ;;
             4)
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Database you want to delete: " db_name
                 delete "$dbs_path" "$db_name" "db"
                 sleep 2
@@ -47,7 +48,8 @@ db_menu() {
                 content=$(ls "$dbs_path")
                 ([[ -z "$content" ]] && echo "No Databases exist") || { echo "Databases:"; echo; echo "$content"; }
                 echo
-                read -n 1 -p "press any key to continue..."
+                read -s -t 0.1 -N 999999
+                read -s -n 1 -p "press any key to continue..."
             ;;
             6)
                 echo Goodbye!
@@ -75,30 +77,35 @@ table_menu(){
         echo "5) View Tables."
         echo "6) Return to Main Menu."
         
-        read -n 1 option
+        read -s -t 0.1 -N 999999
+        read -s -n 1 option
         clear
         
         case $option in
             1)
                 # metadata?
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Table you want to create: " table_name
                 create "$db_path" "$table_name" "table"
                 sleep 2
             ;;
             2)
                 # what to do here?
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Table you want to select: " table_name
                 [[ -z "$table_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
                 ([[ ! -e "$db_path/$table_name" ]] && echo "'$table_name' does not exist." ) || echo "$table_name selected"
                 sleep 2
             ;;
             3)
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Table you want to rename: " table_name
                 [[ -z "$table_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
                 ([[ ! -e "$db_path/$table_name" ]] && echo "'$table_name' does not exist." ) || rename "$db_path" "$table_name"
                 sleep 2
             ;;
             4)
+                read -s -t 0.1 -N 999999
                 read -p "Please enter the name of the Table you want to delete: " table_name
                 delete "$db_path" "$table_name" "table"
                 sleep 2
@@ -107,7 +114,8 @@ table_menu(){
                 content=$(ls "$db_path")
                 ([[ -z "$content" ]] && echo "No Tables in '$1' exist") || { echo "Tables in '$1':"; echo; echo "$content"; }
                 echo
-                read -n 1 -p "press any key to continue..."
+                read -s -t 0.1 -N 999999
+                read -s -n 1 -p "press any key to continue..."
             ;;
             6)
                 break
@@ -120,10 +128,3 @@ table_menu(){
     done
 }
 
-
-########################################################################################
-
-# exports:
-##########
-export -f db_menu
-export -f table_menu
