@@ -1,0 +1,19 @@
+#!/bin/bash
+########################################################################################
+# valid DataTypes
+validDataTypes=("int" "str")
+
+# $1: DataType to check if valid
+is_type() {
+    [[ " ${validDataTypes[*]} " == *" $1 "* ]]
+}
+
+# $1: value to check if integer
+is_int() {
+    [[ "$1" =~ ^-?[0-9]+$ ]]
+}
+
+# $1: value to check if string
+is_str() {
+    [[ "$1" =~ ^[a-zA-Z\ ._-]+$ ]]
+}

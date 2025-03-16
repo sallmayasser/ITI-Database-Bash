@@ -1,0 +1,131 @@
+#!/bin/bash
+########################################################################################
+
+# helper functions:
+###################
+
+# $1: Metadata temp file
+# $2: unique, notnull
+restriction() {
+    clear
+    awk -F ":" '{print $2}' "$1" | nl -w 1 -s ") "
+    while true
+    do
+        echo
+        clear_buffer
+        read -p "Enter the column number for the $2 key, or 0 to finish: " key
+        
+        if is_int "$key"
+        then
+            [[ $key -eq 0 ]] && break
+            if [[ $key -gt 0 ]] && [[ $key -le $colNum ]]
+            then
+                if [[ $key -eq $pk ]]
+                then
+                    echo "'$pk_name' is already $2 as it is the primary key."
+                elif $(awk -v key="$key" -v condition="$2" -F ":" 'NR==key {if ($3==condition || $4==condition) exit 0; exit 1}' "$1")
+                then
+                    key_name=$(awk -v key="$key" -F ":" 'NR==key {print $2}' "$1")
+                    echo "'$key_name' is already $2."
+                else
+                    sed -i "${key}s/$/:$2/" "$1"
+                fi
+                continue
+            fi
+        fi
+        echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 to finish."
+    done
+}
+
+# $1: Metadata temp file
+key_init() {
+    rm -f "$1"
+    for ((i=0; i<$colNum; i++))
+    do
+        line="key"
+        echo
+        
+        clear_buffer
+        read -p "Please enter column $(($i+1)) Name: " colName && colName=$(trim_tolower "$colName")
+        [[ -z "$colName" ]] && { echo "Column name cannot be whitespace"; ((i--)); continue; }
+        line+=":$colName"
+        
+        clear_buffer
+        read -p "Please enter column $(($i+1)) Data Type (int/str): " colType && colType=$(trim_tolower "$colType")
+        [[ -z "$colType" ]] && { echo "Data Type cannot be whitespace"; ((i--)); continue; }
+        is_type "$colType" && line+=":$colType" || { echo "Data Type must be 'int' or 'str'"; ((i--)); continue; }
+        
+        echo "$line" >> "$1"
+    done
+}
+
+########################################################################################
+
+# $1: Database Path
+# $2: Table to be created
+table_init() {
+    clear
+    
+    while true
+    do
+        clear_buffer
+        read -p "Please enter number of columns: " colNum
+        [[ -z "$colNum" ]] && { echo -e "Number of columns cannot be whitespace\n"; continue; }
+        is_int "$colNum" && [[ $colNum -gt 0 ]] && break
+        echo -e "Number of columns must be a positive integer\n"
+    done
+    
+    key_init "$1/.$2.temp"
+    clear
+    awk -F ":" '{print $2}' "$1/.$2.temp" | nl -w 1 -s ") "
+    while true
+    do
+        echo
+        clear_buffer
+        read -p "Enter the column number for the primary key, or 0 for auto-generated ID: " pk
+        is_int "$pk" && [[ $key -ge 0 ]] && [[ $key -le $colNum ]] && break
+        echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 for auto-generated ID."
+    done
+    
+    [[ $pk -eq 0 ]] && pk_name="ID" || pk_name=$(awk -v pk="$pk" -F ":" 'NR==pk {print $2}' "$1/.$2.temp")
+    if [[ $colNum -ne 1 ]] || [[ $pk -ne 1 ]]
+    then
+        restriction "$1/.$2.temp" "unique"
+        restriction "$1/.$2.temp" "notnull"
+    fi
+    [[ $pk -eq 0 ]] && { sed -i "1s/^/key:ID:auto\n/" "$1/.$2.temp"; ((colNum++)); } || sed -i "${pk}s/$/:pk/" "$1/.$2.temp"
+    
+    clear
+    echo -e "Table info:\n"
+    # friendlier format
+    cat "$1/.$2.temp"
+    echo
+    clear_buffer
+    read -s -n 1 -p "Press [y/Y] to confirm initialization and any other key to cancel: " confirm
+    [[ $confirm != [yY] ]] && { echo -e "\ninitialization canceled"; sleep 2; return 1; }
+    
+    echo "col:$colNum" >> "$1/.$2"
+    echo "row:0" >> "$1/.$2"
+    echo "pk:$pk_name:$pk" >> "$1/.$2"
+    cat "$1/.$2.temp" >> "$1/.$2"
+    rm "$1/.$2.temp"
+    
+    echo -e "\nTable initialized succussfully"
+    sleep 2
+    crud_menu
+}
+
+
+# $1: Table Metadata File
+# $2: Table Data File
+crud_menu() {
+    clear
+    echo "Nice"
+    sleep 2
+}
+
+# $1: Database Path
+# $2: Table to be created
+select_table() {
+    [[ -s "$1/.$2" ]] && crud_menu "$1/.$2" "$1/$2" || table_init "$1" "$2"
+}

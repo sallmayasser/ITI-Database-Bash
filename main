@@ -1,9 +1,13 @@
 #!/bin/bash
+########################################################################################
 
 # imports:
 ##########
 source ./scripts/menu
 source ./scripts/db_table
+source ./scripts/crud
+source ./scripts/validation
+source ./scripts/utils
 
 ########################################################################################
 
