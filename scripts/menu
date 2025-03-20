@@ -2,8 +2,7 @@
 ########################################################################################
 
 db_menu() {
-    while true
-    do
+    while true; do
         clear
         echo "Welcome to our DBMS, select what you want to do:"
         echo "1) Create Database."
@@ -12,51 +11,65 @@ db_menu() {
         echo "4) Delete Database."
         echo "5) View Databases."
         echo "6) Exit BDMS."
-        
+
         clear_buffer
         read -s -n 1 option
         clear
-        
+
         case $option in
-            1)
-                clear_buffer
-                read -p "Please enter the name of the Database you want to create: " db_name && db_name=$(trim_tolower "$db_name")
-                create "$dbs_path" "$db_name" "db"
+        1)
+            clear_buffer
+            read -p "Please enter the name of the Database you want to create: " db_name && db_name=$(trim_tolower "$db_name")
+            create "$dbs_path" "$db_name" "db"
+            sleep 2
+            ;;
+        2)
+            clear_buffer
+            read -p "Please enter the name of the Database you want to select: " db_name && db_name=$(trim_tolower "$db_name")
+            [[ -z "$db_name" ]] && {
+                echo "Name cannot be whitespace"
                 sleep 2
-            ;;
-            2)
-                clear_buffer
-                read -p "Please enter the name of the Database you want to select: " db_name && db_name=$(trim_tolower "$db_name")
-                [[ -z "$db_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
-                [[ ! -e "$dbs_path/$db_name" ]] && { echo "'$db_name' does not exist."; sleep 2; } || table_menu "$db_name"
-            ;;
-            3)
-                clear_buffer
-                read -p "Please enter the name of the Database you want to rename: " db_name && db_name=$(trim_tolower "$db_name")
-                [[ -z "$db_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
-                [[ ! -e "$dbs_path/$db_name" ]] && echo "'$db_name' does not exist." || rename "$dbs_path" "$db_name"
+                continue
+            }
+            [[ ! -e "$dbs_path/$db_name" ]] && {
+                echo "'$db_name' does not exist."
                 sleep 2
+            } || table_menu "$db_name"
             ;;
-            4)
-                clear_buffer
-                read -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(trim_tolower "$db_name")
-                delete "$dbs_path" "$db_name" "db"
+        3)
+            clear_buffer
+            read -p "Please enter the name of the Database you want to rename: " db_name && db_name=$(trim_tolower "$db_name")
+            [[ -z "$db_name" ]] && {
+                echo "Name cannot be whitespace"
                 sleep 2
+                continue
+            }
+            [[ ! -e "$dbs_path/$db_name" ]] && echo "'$db_name' does not exist." || rename "$db_name" "db"
+            sleep 2
             ;;
-            5)
-                content=$(ls "$dbs_path")
-                [[ -z "$content" ]] && echo -e "No Databases exist\n" || { echo "Databases:"; echo -e "\n$content\n"; }
-                clear_buffer
-                read -s -n 1 -p "Press any key to continue..."
+        4)
+            clear_buffer
+            read -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(trim_tolower "$db_name")
+            delete "$dbs_path" "$db_name" "db"
+            sleep 2
             ;;
-            6)
-                echo Goodbye!
-                sleep 2
-                break
+        5)
+            content=$(ls "$dbs_path")
+            [[ -z "$content" ]] && echo -e "No Databases exist\n" || {
+                echo "Databases:"
+                echo -e "\n$content\n"
+            }
+            clear_buffer
+            read -s -n 1 -p "Press any key to continue..."
             ;;
-            *)
-                echo "Invalid option. Please try again."
-                sleep 2
+        6)
+            echo Goodbye!
+            sleep 2
+            return 0
+            ;;
+        *)
+            echo "Invalid option. Please try again."
+            sleep 2
             ;;
         esac
     done
@@ -64,8 +77,7 @@ db_menu() {
 
 table_menu() {
     db_path="$dbs_path/$1"
-    while true
-    do
+    while true; do
         clear
         echo "Select what you want to do in Database '"$1"':"
         echo "1) Create Table."
@@ -74,51 +86,64 @@ table_menu() {
         echo "4) Delete Table."
         echo "5) View Tables."
         echo "6) Return to Main Menu."
-        
+
         clear_buffer
         read -s -n 1 option
         clear
-        
+
         case $option in
-            1)
-                clear_buffer
-                read -p "Please enter the name of the Table you want to create: " table_name && table_name=$(trim_tolower "$table_name")
-                create "$db_path" "$table_name" "table"
+        1)
+            clear_buffer
+            read -p "Please enter the name of the Table you want to create: " table_name && table_name=$(trim_tolower "$table_name")
+            create "$db_path" "$table_name" "table"
+            sleep 2
+            ;;
+        2)
+            clear_buffer
+            read -p "Please enter the name of the Table you want to select: " table_name && table_name=$(trim_tolower "$table_name")
+            [[ -z "$table_name" ]] && {
+                echo "Name cannot be whitespace"
                 sleep 2
-            ;;
-            2)
-                clear_buffer
-                read -p "Please enter the name of the Table you want to select: " table_name && table_name=$(trim_tolower "$table_name")
-                [[ -z "$table_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
-                [[ ! -e "$db_path/$table_name" ]] && { echo "'$table_name' does not exist."; sleep 2; } || select_table "$db_path" "$table_name"
-            ;;
-            3)
-                clear_buffer
-                read -p "Please enter the name of the Table you want to rename: " table_name && table_name=$(trim_tolower "$table_name")
-                [[ -z "$table_name" ]] && { echo "Name cannot be whitespace"; sleep 2; continue; }
-                [[ ! -e "$db_path/$table_name" ]] && echo "'$table_name' does not exist." || rename "$db_path" "$table_name"
+                continue
+            }
+            [[ ! -e "$db_path/$table_name" ]] && {
+                echo "'$table_name' does not exist."
                 sleep 2
+            } || select_table "$db_path" "$table_name"
             ;;
-            4)
-                clear_buffer
-                read -p "Please enter the name of the Table you want to delete: " table_name && table_name=$(trim_tolower "$table_name")
-                delete "$db_path" "$table_name" "table"
+        3)
+            clear_buffer
+            read -p "Please enter the name of the Table you want to rename: " table_name && table_name=$(trim_tolower "$table_name")
+            [[ -z "$table_name" ]] && {
+                echo "Name cannot be whitespace"
                 sleep 2
+                continue
+            }
+            [[ ! -e "$db_path/$table_name" ]] && echo "'$table_name' does not exist." || rename "$table_name" "table"
+            sleep 2
             ;;
-            5)
-                content=$(ls "$db_path")
-                [[ -z "$content" ]] && echo -e "No Tables in '$1' exist\n" || { echo "Tables in '$1':"; echo -e "\n$content\n"; }
-                clear_buffer
-                read -s -n 1 -p "Press any key to continue..."
+        4)
+            clear_buffer
+            read -p "Please enter the name of the Table you want to delete: " table_name && table_name=$(trim_tolower "$table_name")
+            delete "$db_path" "$table_name" "table"
+            sleep 2
             ;;
-            6)
-                break
+        5)
+            content=$(ls "$db_path")
+            [[ -z "$content" ]] && echo -e "No Tables in '$1' exist\n" || {
+                echo "Tables in '$1':"
+                echo -e "\n$content\n"
+            }
+            clear_buffer
+            read -s -n 1 -p "Press any key to continue..."
             ;;
-            *)
-                echo "Invalid option. Please try again."
-                sleep 2
+        6)
+            return 0
+            ;;
+        *)
+            echo "Invalid option. Please try again."
+            sleep 2
             ;;
         esac
     done
 }
-
