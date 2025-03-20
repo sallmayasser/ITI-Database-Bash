@@ -6,8 +6,7 @@
 
 # $1: Database
 is_empty() {
-    for item in "$1"/*
-    do
+    for item in "$1"/*; do
         [[ -s "$item" ]] && return 1
     done
     return 0
@@ -22,11 +21,16 @@ is_empty() {
 # $2: Database or Table to be created
 # $3: 'db': Database, 'table': Table
 create() {
-    [[ -z "$2" ]] && { echo "Name cannot be whitespace"; return 1; }
-    [[ -e "$1/$2" ]] && { echo "'$2' already exists."; return 1; }
-    
+    [[ -z "$2" ]] && {
+        echo "Name cannot be whitespace"
+        return 1
+    }
+    [[ -e "$1/$2" ]] && {
+        echo "'$2' already exists."
+        return 1
+    }
+
     { [[ $3 == 'db' ]] && mkdir "$1/$2"; } || { [[ $3 == 'table' ]] && touch "$1/$2"; }
-    
     touch "$1/.$2"
     echo "'$2' created successfully."
     return 0
@@ -37,35 +41,51 @@ create() {
 # $3: 'db': Database, 'table': Table
 delete() {
     del='y'
-    [[ -z $2 ]] && { echo "Name cannot be whitespace"; return 1; }
-    [[ ! -e "$1/$2" ]] && { echo "'$2' does not exist."; return 1; }
-    
-    if { [[ $3 == "db" ]] && is_empty "$1/$2"; } || [[ $3 == "table" && -s "$1/$2" ]]
-    then
+    [[ -z $2 ]] && {
+        echo "Name cannot be whitespace"
+        return 1
+    }
+    [[ ! -e "$1/$2" ]] && {
+        echo "'$2' does not exist."
+        return 1
+    }
+
+    if { [[ $3 == "db" ]] && ! is_empty "$1/$2"; } || [[ $3 == "table" && -s "$1/$2" ]]; then
         echo "'$2' is not empty, are you sure you want to delete it?"
-        read -s -t 0.1 -N 999999
+        clear_buffer
         read -s -n 1 -p "Press [y/Y] to confirm delete and any other key to cancel: " del
         echo
     fi
-    
-    [[ $del != [yY] ]] && { echo "delete canceled"; return 1; }
-    
+
+    [[ $del != [yY] ]] && {
+        echo "delete canceled"
+        return 1
+    }
+
     rm -r "$1/$2"
     rm "$1/.$2"
     echo "'$2' is deleted successfully."
     return 0
 }
 
-# $1: parent directory
-# $2: old name
+# $1: old name
+# $2: 'db': Database, 'table': Table
 rename() {
-    read -s -t 0.1 -N 999999
+    clear_buffer
     read -p "Please enter the new name: " new_name && new_name=$(trim_tolower "$new_name")
-    [[ -z "$new_name" ]] && { echo "Name cannot be whitespace"; return 1; }
-    [[ -e "$1/$new_name" ]] && { echo "'$new_name' already exists"; return 1; }
-    
-    mv "$1/$2" "$1/$new_name"
-    mv "$1/.$2" "$1/.$new_name"
-    echo "'$2' is renamed successfully to '$new_name'"
+
+    [[ -z "$new_name" ]] && {
+        echo "Name cannot be whitespace"
+        return 1
+    }
+    { [[ $2 == 'db' ]] && path=$dbs_path; } || { [[ $2 == 'table' ]] && path=$db_path; }
+    [[ -e "$path/$new_name" ]] && {
+        echo "'$new_name' already exists"
+        return 1
+    }
+
+    mv "$path/$1" "$path/$new_name"
+    mv "$path/.$1" "$path/.$new_name"
+    echo "'$1' is renamed successfully to '$new_name'"
     return 0
 }
