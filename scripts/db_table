@@ -83,7 +83,6 @@ rename() {
         echo "'$new_name' already exists"
         return 1
     }
-
     mv "$path/$1" "$path/$new_name"
     mv "$path/.$1" "$path/.$new_name"
     echo "'$1' is renamed successfully to '$new_name'"
