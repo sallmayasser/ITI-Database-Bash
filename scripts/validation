@@ -1,7 +1,7 @@
 #!/bin/bash
 ########################################################################################
 # valid DataTypes
-validDataTypes=("int" "str")
+validDataTypes=("int" "str" "email" "phone")
 
 # $1: DataType to check if valid
 is_type() {
@@ -13,7 +13,16 @@ is_int() {
     [[ "$1" =~ ^-?[0-9]+$ ]]
 }
 
-# $1: value to check if string
+# $1: value to check if start with letter
 is_str() {
-    [[ "$1" =~ ^[a-zA-Z\ ._-]+$ ]]
+    [[ "$1" =~ ^[a-z].*$ ]]
+}
+
+# $1: value to check if email
+is_email() {
+    [[ "$1" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]
+}
+
+is_phone() {
+    [[ "$1" =~ ^(01[0125])[0-9]{8}$ ]]
 }
