@@ -65,31 +65,18 @@ key_init() {
     done
 }
 
-# $1: Metadata file
-get_last_id() {
-    awk -F':' 'NR==8 {print $NF}' "$1"
-}
-
 # $1: Table meta-data File
 # $2: Table Data File
 write_headers() {
-    local META_FILE="$1"
-    local DB_FILE="$2"
-
-    # Extract primary key value 
-    PRIMARY_KEY=$(awk -F ':' 'NR==7 {print $2}' "$META_FILE")
+    local meta_file="$1"
+    local table_file="$2"
 
     # Generate headers
-    if [[ "$PRIMARY_KEY" == "ID" ]]; then
-        HEADER=$(awk -F ':' '/^key:/ {print $2}' "$META_FILE" | paste -sd ":" -)
-    else
-        HEADER="row_num:"$(awk -F ':' '/^key:/ {print $2}' "$META_FILE" | paste -sd ":" -)
-    fi
+    header=$(awk -F ':' '/^key:/ {print $2}' "$meta_file" | paste -sd ":" -)
 
     # Write headers to the DB file
-    echo "$HEADER" >"$DB_FILE"
+    echo "$header" >"$table_file"
 }
-
 
 ########################################################################################
 
@@ -149,7 +136,6 @@ table_init() {
     echo "columns:$colNum" >>"$1/.$2"
     echo "rows:0" >>"$1/.$2"
     echo "pk:$pk_name:$pk" >>"$1/.$2"
-    echo "last_id:0" >>"$1/.$2"
     cat "$1/.$2.temp" >>"$1/.$2"
     rm "$1/.$2.temp"
 
@@ -157,13 +143,17 @@ table_init() {
 
     echo -e "\nTable initialized succussfully"
     sleep 2
-    crud_menu
+    crud_menu "$1/.$2" "$1/$2"
 }
 
 # $1: Table Metadata File
 # $2: Table Data File
-
 crud_menu() {
+    rows_md=$(awk -F ":" '/^rows:/ {print NR}' "$1")
+    row_num=$(awk -F':' -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
+    pk_md=$(awk -F ":" '/^pk:/ {print NR}' "$1")
+    updated_at_md=$(awk -F ":" '/^updated_at:/ {print NR}' "$1")
+
     while true; do
         clear
         echo "Select what you want to do in table :"
@@ -214,51 +204,53 @@ validate_input() {
         clear_buffer
         read -p "Enter $field: " value
         value=$(trim_tolower "$value")
+        [[ "$value" == "N/A" ]] && value=""
 
         # Check PK constraint (must be unique and not null)
         [[ "$constraints" == *"pk"* ]] && {
             [[ -z "$value" ]] && echo "Error: $field (Primary Key) cannot be empty!" && continue
-            grep -q ":$value:" "$db_file" && echo "Error: $field (Primary Key) must be unique!" && continue
+            grep -q "$value:" "$table_file" && echo "Error: $field (Primary Key) must be unique!" && continue
         }
 
         # Check NOT NULL constraint
         [[ "$constraints" == *"notnull"* && -z "$value" ]] && echo "Error: $field cannot be empty." && continue
 
         # Check UNIQUE constraint (if not a PK)
-        [[ "$constraints" == *"unique"* && $(grep -q ":$value:" "$db_file") -gt 0 ]] && echo "Error: $field must be unique." && continue
+        [[ "$constraints" == *"unique"* && $(grep -q "$value:" "$table_file") -gt 0 ]] && echo "Error: $field must be unique." && continue
 
-        case "$type" in
-        "str")
-            if ! is_str "$value"; then
-                echo "Error: $field must start with letter."
+        if [[ ! -z $value ]]; then
+            case "$type" in
+            "str")
+                if ! is_str "$value"; then
+                    echo "Error: $field must start with letter."
+                    continue
+                fi
+                ;;
+            "int")
+                if ! is_int "$value"; then
+                    echo "Error: $field must be an integer."
+                    continue
+                fi
+                ;;
+            "email")
+                if ! is_email "$value"; then
+                    echo "Error: Invalid email format youm must enter in this format john@example.com"
+                    continue
+                fi
+                ;;
+            "phone")
+                if ! is_phone "$value"; then
+                    echo "Error: Invalid phone format. Must be 10-15 digits."
+                    continue
+                fi
+                ;;
+            *)
+                echo "Error: Unknown type $type for $field."
                 continue
-            fi
-            ;;
-        "int")
-            if ! is_int "$value"; then
-                echo "Error: $field must be an integer."
-                continue
-            fi
-            ;;
-        "email")
-            if ! is_email "$value"; then
-                echo "Error: Invalid email format youm must enter in this format john@example.com"
-                continue
-            fi
-            ;;
-        "phone")
-            if ! is_phone "$value"; then
-                echo "Error: Invalid phone format. Must be 10-15 digits."
-                continue
-            fi
-            ;;
-        *)
-            echo "Error: Unknown type $type for $field."
-            continue
-            ;;
-        esac
-
-        reply="$value"
+                ;;
+            esac
+        fi
+        [[ -n "$value" ]] && reply="$value" || reply="N\A"
         return 0
     done
 }
@@ -270,9 +262,8 @@ insert_record() {
     echo "Welcome to the record insertion wizard!"
     echo "*****************************************"
     local meta_file="$1"
-    local db_file="$2"
+    local table_file="$2"
 
-    last_id=$(awk -F':' 'NR==8 {print $NF}' "$meta_file")
     declare -A field rules
     column_order=()
 
@@ -284,10 +275,12 @@ insert_record() {
         fi
     done < <(grep '^key:' "$meta_file")
 
-    new_id=$((last_id + 1))
-    new_row="$new_id"
+    new_row=""
 
     if [[ "${field["ID"]}" == "auto" ]]; then
+        last_id=$(awk -F':' -v pk_md=$pk_md 'NR==pk_md {print $NF}' "$meta_file")
+        new_id=$((last_id + 1))
+        new_row="$new_id:"
         attributes=("${column_order[@]:1}")
     else
         attributes=("${column_order[@]}")
@@ -299,52 +292,28 @@ insert_record() {
         while :; do
             validate_input "$attr" "$type" "$constraints"
             if [[ $? -eq 0 ]]; then
-                new_row+=":$reply"
+                new_row+="$reply:"
                 break
             fi
         done
     done
 
-    echo "$new_row" >>"$db_file"
+    echo "$new_row" >>"$table_file"
 
     #  increment the last_id i  meta data file
-    sed -i "8s/^last_id:[0-9]*/last_id:$new_id/" "$meta_file"
+    if [[ "${field["ID"]}" == "auto" ]]; then
+        sed -i "${pk_md}s/^pk:ID:[0-9]*/pk:ID:$new_id/" "$meta_file"
+    fi
+
+    sed -i "${rows_md}s/rows:[0-9]*/rows:$(($row_num + 1))/" "$meta_file"
+    sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$meta_file"
 
     echo "Row inserted successfully!"
 }
 
 # $1: Table Data File
 show_all_records() {
-    local DB_FILE="$1"
-
+    local table_file="$1"
     clear
-    echo "All Records:"
-    echo "*****************************************"
-
-    # Read the first row as the header
-    IFS=":" read -r -a COLUMNS < "$DB_FILE"
-
-    # Build the format string dynamically
-    FORMAT_STRING=""
-    SEPARATOR=""
-
-    for col in "${COLUMNS[@]}"; do
-        FORMAT_STRING+="%-30s | "
-        SEPARATOR+="-------------------------------| "
-    done
-
-    # Trim trailing "| "
-    FORMAT_STRING=${FORMAT_STRING::-3}
-    SEPARATOR=${SEPARATOR::-3}
-
-    # Print table header
-    printf "$FORMAT_STRING\n" "${COLUMNS[@]}"
-        echo "$SEPARATOR"
-
-    # Print table rows (skip the first row)
-    tail -n +2 "$DB_FILE" | while IFS=":" read -r -a ROW; do
-        printf "$FORMAT_STRING\n" "${ROW[@]}"
-    done
-
-    echo "----------------------------------------"
+    column -t -s ':' "$table_file"
 }
