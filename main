@@ -1,11 +1,11 @@
 #!/bin/bash
 ########################################################################################
-
 # imports:
 ##########
 source "$(dirname "$0")"/scripts/menu
 source "$(dirname "$0")"/scripts/db_table
 source "$(dirname "$0")"/scripts/crud
+echo "hello"
 source "$(dirname "$0")"/scripts/validation
 source "$(dirname "$0")"/scripts/utils
 
