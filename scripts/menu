@@ -4,13 +4,14 @@
 db_menu() {
     while true; do
         clear
-        echo "Welcome to our DBMS, select what you want to do:"
+        echo "Welcome $user to our DBMS, select what you want to do:"
         echo "1) Create Database."
         echo "2) Select Database."
         echo "3) Rename Database."
         echo "4) Delete Database."
         echo "5) View Databases."
-        echo "6) Exit BDMS."
+        echo "6) Logout."
+        echo "7) Exit BDMS."
 
         clear_buffer
         read -s -n 1 option
@@ -30,6 +31,10 @@ db_menu() {
                 echo "Name cannot be whitespace"
                 sleep 2
                 continue
+            }
+            ! is_str "$db_name" && {
+                echo "Invalid name. The name must start with a letter and cannot contain ':' or '/'."
+                return 1
             }
             [[ ! -e "$dbs_path/$db_name" ]] && {
                 echo "'$db_name' does not exist."
@@ -63,9 +68,14 @@ db_menu() {
             read -s -n 1 -p "Press any key to continue..."
             ;;
         6)
-            echo Goodbye!
+            echo "Goodbye $user!"
             sleep 2
             return 0
+            ;;
+        7)
+            echo "Goodbye $user!"
+            sleep 2
+            exit 0
             ;;
         *)
             echo "Invalid option. Please try again."
@@ -106,6 +116,10 @@ table_menu() {
                 sleep 2
                 continue
             }
+            ! is_str "$table_name" && {
+                echo "Invalid name. The name must start with a letter and cannot contain ':' or '/'."
+                return 1
+            }
             [[ ! -e "$db_path/$table_name" ]] && {
                 echo "'$table_name' does not exist."
                 sleep 2
@@ -119,6 +133,7 @@ table_menu() {
                 sleep 2
                 continue
             }
+
             [[ ! -e "$db_path/$table_name" ]] && echo "'$table_name' does not exist." || rename "$table_name" "table"
             sleep 2
             ;;

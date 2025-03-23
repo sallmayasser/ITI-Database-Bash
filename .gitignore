@@ -1,5 +1,8 @@
+# Test Direcroty
+test
+
 # The directory that holds all databases
 .DBs
 
-# Test Direcroty
-test
+# Credentials Directory
+.Credentials

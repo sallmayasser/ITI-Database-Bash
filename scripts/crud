@@ -78,123 +78,6 @@ write_headers() {
     echo "$header" >"$table_file"
 }
 
-########################################################################################
-
-# $1: Database Path
-# $2: Table to be created
-table_init() {
-    clear
-    while true; do
-        clear_buffer
-        read -p "Please enter number of columns: " colNum
-        [[ -z "$colNum" ]] && {
-            echo -e "Number of columns cannot be whitespace\n"
-            continue
-        }
-        is_int "$colNum" && [[ $colNum -gt 0 ]] && break
-        echo -e "Number of columns must be a positive integer\n"
-    done
-
-    key_init "$1/.$2.temp"
-    clear
-    awk -F ":" '{print $2}' "$1/.$2.temp" | nl -w 1 -s ") "
-    while true; do
-        echo
-        clear_buffer
-        read -p "Enter the column number for the primary key, or 0 for auto-generated ID: " pk
-        is_int "$pk" && [[ $key -ge 0 ]] && [[ $key -le $colNum ]] && break
-        echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 for auto-generated ID."
-    done
-
-    [[ $pk -eq 0 ]] && pk_name="ID" || pk_name=$(awk -v pk="$pk" -F ":" 'NR==pk {print $2}' "$1/.$2.temp")
-    if [[ $colNum -ne 1 ]] || [[ $pk -eq 0 ]]; then
-        restriction "$1/.$2.temp" "unique"
-        restriction "$1/.$2.temp" "notnull"
-    fi
-    [[ $pk -eq 0 ]] && {
-        sed -i "1s/^/key:ID:auto\n/" "$1/.$2.temp"
-        ((colNum++))
-    } || sed -i "${pk}s/$/:pk/" "$1/.$2.temp"
-
-    clear
-    echo -e "Table info:\n"
-    # friendlier format
-    cat "$1/.$2.temp"
-    echo
-    clear_buffer
-    read -s -n 1 -p "Press [y/Y] to confirm initialization and any other key to cancel: " confirm
-    [[ $confirm != [yY] ]] && {
-        echo -e "\ninitialization canceled"
-        sleep 2
-        return 1
-    }
-
-    echo "db_name:$(basename "$1")" >>"$1/.$2"
-    echo "table_name:$2" >>"$1/.$2"
-    echo "created_at:$(date)" >>"$1/.$2"
-    echo "updated_at:$(date)" >>"$1/.$2"
-    echo "columns:$colNum" >>"$1/.$2"
-    echo "rows:0" >>"$1/.$2"
-    echo "pk:$pk_name:$pk" >>"$1/.$2"
-    cat "$1/.$2.temp" >>"$1/.$2"
-    rm "$1/.$2.temp"
-
-    write_headers "$1/.$2" "$1/$2"
-
-    echo -e "\nTable initialized succussfully"
-    sleep 2
-    crud_menu "$1/.$2" "$1/$2"
-}
-
-# $1: Table Metadata File
-# $2: Table Data File
-crud_menu() {
-    rows_md=$(awk -F ":" '/^rows:/ {print NR}' "$1")
-    row_num=$(awk -F':' -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
-    pk_md=$(awk -F ":" '/^pk:/ {print NR}' "$1")
-    updated_at_md=$(awk -F ":" '/^updated_at:/ {print NR}' "$1")
-
-    while true; do
-        clear
-        echo "Select what you want to do in table :"
-        echo "1) Insert Record"
-        echo "2) Delete Record"
-        echo "3) Update Record"
-        echo "4) Find Record"
-        echo "5) Show All Records"
-        echo "6) Exit"
-
-        clear_buffer
-        read -s -n 1 choice
-
-        case "$choice" in
-        1) insert_record "$1" "$2" ;;
-        2) delete_record ;;
-        3) update_record ;;
-        4) find_record ;;
-        5)
-            show_all_records "$2"
-            clear_buffer
-            read -s -n 1 -p "Press any key to continue..."
-            ;;
-        6) break ;;
-        *)
-            echo "Invalid choice, please try again."
-            sleep 2
-            ;;
-        esac
-
-    done
-}
-
-# $1: Database Path
-# $2: Table to be created
-select_table() {
-    [[ -s "$1/.$2" ]] && crud_menu "$1/.$2" "$1/$2" || table_init "$1" "$2"
-}
-
-# $1: Table meta-data File
-# $2: Table Data File
 validate_input() {
     local field="$1"
     local type="$2"
@@ -250,13 +133,117 @@ validate_input() {
                 ;;
             esac
         fi
-        [[ -n "$value" ]] && reply="$value" || reply="N\A"
+        [[ -n "$value" ]] && echo "$value" || echo "N\A"
         return 0
     done
 }
 
-# $1: Table meta-data File
+########################################################################################
+
+# $1: Database Path
+# $2: Table to be created
+table_init() {
+    clear
+    while true; do
+        clear_buffer
+        read -p "Please enter number of columns: " colNum
+        [[ -z "$colNum" ]] && {
+            echo -e "Number of columns cannot be whitespace\n"
+            continue
+        }
+        is_int "$colNum" && [[ $colNum -gt 0 ]] && break
+        echo -e "Number of columns must be a positive integer\n"
+    done
+
+    key_init "$1/.$2.temp"
+    clear
+    awk -F ":" '{print $2}' "$1/.$2.temp" | nl -w 1 -s ") "
+    while true; do
+        echo
+        clear_buffer
+        read -p "Enter the column number for the primary key, or 0 for auto-generated ID: " pk
+        is_int "$pk" && [[ $key -ge 0 ]] && [[ $key -le $colNum ]] && break
+        echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 for auto-generated ID."
+    done
+
+    [[ $pk -eq 0 ]] && pk_name="ID" || pk_name=$(awk -v pk="$pk" -F ":" 'NR==pk {print $2}' "$1/.$2.temp")
+    if [[ $colNum -ne 1 ]] || [[ $pk -eq 0 ]]; then
+        restriction "$1/.$2.temp" "unique"
+        restriction "$1/.$2.temp" "notnull"
+    fi
+    [[ $pk -eq 0 ]] && {
+        sed -i "1s/^/key:ID:auto\n/" "$1/.$2.temp"
+        ((colNum++))
+    } || sed -i "${pk}s/$/:pk/" "$1/.$2.temp"
+
+    clear
+    echo -e "Table info:\n"
+    # friendlier format
+    cat "$1/.$2.temp"
+    echo
+    clear_buffer
+    read -s -n 1 -p "Press [y/Y] to confirm initialization and any other key to cancel: " confirm
+    [[ $confirm != [yY] ]] && {
+        echo -e "\ninitialization canceled"
+        sleep 2
+        return 1
+    }
+
+    echo "updated_at:$(date)" >>"$1/.$2"
+    echo "columns:$colNum" >>"$1/.$2"
+    echo "rows:0" >>"$1/.$2"
+    echo "pk:$pk_name:$pk" >>"$1/.$2"
+    cat "$1/.$2.temp" >>"$1/.$2"
+    rm "$1/.$2.temp"
+
+    write_headers "$1/.$2" "$1/$2"
+
+    echo -e "\nTable initialized succussfully"
+    sleep 2
+    crud_menu "$1/.$2" "$1/$2"
+}
+
+# $1: Table Metadata File
 # $2: Table Data File
+crud_menu() {
+    rows_md=$(awk -F ":" '/^rows:/ {print NR}' "$1")
+    row_num=$(awk -F':' -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
+    pk_md=$(awk -F ":" '/^pk:/ {print NR}' "$1")
+    updated_at_md=$(awk -F ":" '/^updated_at:/ {print NR}' "$1")
+
+    while true; do
+        clear
+        echo "Select what you want to do in table :"
+        echo "1) Insert Record"
+        echo "2) Delete Record"
+        echo "3) Update Record"
+        echo "4) Find Record"
+        echo "5) Show All Records"
+        echo "6) Exit"
+
+        clear_buffer
+        read -s -n 1 choice
+
+        case "$choice" in
+        1) insert_record "$1" "$2" ;;
+        2) delete_record ;;
+        3) update_record ;;
+        4) find_record ;;
+        5)
+            show_all_records "$2"
+            clear_buffer
+            read -s -n 1 -p "Press any key to continue..."
+            ;;
+        6) return 0 ;;
+        *)
+            echo "Invalid choice, please try again."
+            sleep 2
+            ;;
+        esac
+
+    done
+}
+
 insert_record() {
     clear
     echo "Welcome to the record insertion wizard!"
@@ -290,9 +277,9 @@ insert_record() {
         type="${field[$attr]}"
         constraints="${rules[$attr]}"
         while :; do
-            validate_input "$attr" "$type" "$constraints"
+            line=$(validate_input "$attr" "$type" "$constraints" | tail -n 1)
             if [[ $? -eq 0 ]]; then
-                new_row+="$reply:"
+                new_row+="$line:"
                 break
             fi
         done
@@ -316,4 +303,11 @@ show_all_records() {
     local table_file="$1"
     clear
     column -t -s ':' "$table_file"
+}
+
+
+# $1: Database Path
+# $2: Table to be created
+select_table() {
+    [[ -s "$1/$2" ]] && crud_menu "$1/.$2" "$1/$2" || table_init "$1" "$2"
 }

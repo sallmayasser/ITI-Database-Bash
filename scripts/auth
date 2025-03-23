@@ -1,0 +1,130 @@
+#!/bin/bash
+########################################################################################
+
+user_menu() {
+    while true; do
+        clear
+        echo "Welcome $user"
+        echo "1) DBMS"
+        echo "2) Groups"
+        echo "3) Logout"
+        echo "4) Exit"
+
+        clear_buffer
+        read -s -n 1 choice
+        clear
+
+        case "$choice" in
+        1) return 0 ;;
+        2)
+            echo "Groups"
+            sleep 2
+            ;;
+        3)
+            echo "Goodbye $user!"
+            sleep 2
+            return 1
+            ;;
+        4)
+            echo "Goodbye $user!"
+            sleep 2
+            exit 0
+            ;;
+        *) echo "Invalid choice, please try again." ;;
+        esac
+        sleep 2
+    done
+}
+
+login_menu() {
+    clear
+    clear_buffer
+
+    read -p "Please Enter Your Name: " user_name && user_name=$(trim_tolower "$user_name")
+    [[ -z "$user_name" ]] && {
+        echo "Name cannot be whitespace"
+        sleep 2
+        return 1
+    }
+    read -s -p "Please Enter Your Password: " user_pass
+    if [[ ! -e "$auth_path/$user_name" || -z "$user_pass" || $user_pass != $(awk -F ':' 'NR==2 {print $2}' "$auth_path/$user_name") ]]; then
+        echo -e "\nInvalid user name or passward."
+        sleep 2
+        return 1
+    fi
+
+    user=$user_name
+    user_menu
+    return $?
+}
+
+register_menu() {
+    clear
+    clear_buffer
+    read -p "Please Enter Your Name: " user_name && user_name=$(trim_tolower "$user_name")
+
+    [[ -z "$user_name" ]] && {
+        echo "Name cannot be whitespace"
+        return 1
+    }
+    [[ -e "$auth_path/$user_name" ]] && {
+        echo "'$user_name' already exists."
+        return 1
+    }
+
+    read -s -p "Please Enter Your Password: " user_pass1
+    [[ -z "$user_pass1" ]] && {
+        echo "Password cannot be whitespace"
+        sleep 2
+        return 1
+    }
+    echo
+    read -s -p "Please Enter Your Password again: " user_pass2
+    echo
+
+    if [[ $user_pass1 == $user_pass2 ]]; then
+        echo -e "\nRegistration Complete."
+        echo -e "username:$user_name\npass:$user_pass1" >"$auth_path/$user_name"
+        return 0
+    else
+        echo -e "\nPasswords does not match. Registration Failed."
+        return 1
+    fi
+}
+
+auth_menu() {
+    while true; do
+        clear
+        echo "Welcome :"
+        echo "1) Login"
+        echo "2) Register"
+        echo "3) Enter as a guest"
+        echo "4) Exit"
+
+        clear_buffer
+        read -s -n 1 choice
+        clear
+
+        case "$choice" in
+        1)
+            login_menu
+            [[ $? -eq 0 ]] && return 0
+            ;;
+        2)
+            register_menu
+            sleep 2
+            ;;
+        3) return 0 ;;
+        4)
+            echo "Goodbye!"
+            sleep 2
+            exit 0
+            ;;
+        *)
+            echo "Invalid choice, please try again."
+            sleep 2
+            ;;
+        esac
+
+    done
+}
