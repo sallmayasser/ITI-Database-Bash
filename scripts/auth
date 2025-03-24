@@ -95,7 +95,7 @@ register_menu() {
 auth_menu() {
     while true; do
         clear
-        echo "Welcome :"
+        echo "Welcome:"
         echo "1) Login"
         echo "2) Register"
         echo "3) Enter as a guest"

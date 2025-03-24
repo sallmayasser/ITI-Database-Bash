@@ -77,6 +77,7 @@ write_headers() {
     # Write headers to the DB file
     echo "$header" >"$table_file"
 }
+
 validate_input() {
     local field="$1"
     local type="$2"
