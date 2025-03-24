@@ -9,7 +9,8 @@
 restriction() {
     clear
     awk -F ":" '{print $2}' "$1" | nl -w 1 -s ") "
-    while true; do
+    counter="$colNum"
+    while [[ $counter -gt 0 ]]; do
         echo
         clear_buffer
         read -p "Enter the column number for the $2 key, or 0 to finish: " key
@@ -24,6 +25,7 @@ restriction() {
                     echo "'$key_name' is already $2."
                 else
                     sed -i "${key}s/$/:$2/" "$1"
+                    ((counter--))
                 fi
                 continue
             fi
@@ -65,8 +67,6 @@ key_init() {
     done
 }
 
-# $1: Table meta-data File
-# $2: Table Data File
 write_headers() {
     local meta_file="$1"
     local table_file="$2"
@@ -83,7 +83,24 @@ validate_input() {
     local constraints="$3"
     local msg="$4"
 
+    # Find column index from the header of the table file
+    col_index=$(awk -F ":" -v field="$field" '
+        NR==1 {
+            for (i=1; i<=NF; i++) {
+                if ($i == field) {
+                    print i;
+                    exit;
+                }
+            }
+        }' "$table_file")
+
+    if [[ -z "$col_index" ]]; then
+        echo "❌ Error: Column '$field' not found in the table."
+        return 1
+    fi
+
     while :; do
+        echo
         clear_buffer
         read -p "$msg" value
         value=$(trim_tolower "$value")
@@ -92,16 +109,32 @@ validate_input() {
         # Check PK constraint (must be unique and not null)
         [[ "$constraints" == *"pk"* ]] && {
             [[ -z "$value" ]] && echo "Error: $field (Primary Key) cannot be empty!" && continue
-            grep -q "$value:" "$table_file" && echo "Error: $field (Primary Key) must be unique!" && continue
+            if [[ "$constraints" == *"unique"* ]]; then
+                if awk -F ":" -v col="$col_index" -v val="$value" 'NR > 1 && $col == val {exit 1}' "$table_file"; then
+                    echo "Error: $field (Primary Key) must be unique!"
+                    continue
+                fi
+            fi
         }
 
         # Check NOT NULL constraint
         [[ "$constraints" == *"notnull"* && -z "$value" ]] && echo "Error: $field cannot be empty." && continue
 
         # Check UNIQUE constraint (if not a PK)
-        [[ "$constraints" == *"unique"* && $(grep -c "$value:" "$table_file") -gt 0 ]] && echo "Error: this $field is already exist." && continue
+        if [[ "$constraints" == *"unique"* ]]; then
+            if ! awk -F ":" -v col="$col_index" -v val="$value" '
+                NR > 1 {
+                    if ($col == val) {
+                        exit 1;
+                    }
+                }' "$table_file"; then
+                echo " Error: This $field already exists. Please enter a different value."
+                continue
 
-        if [[ ! -z $value ]]; then
+            fi
+        fi
+
+        if [[ -n "$value" ]]; then
             case "$type" in
             "str")
                 if ! is_str "$value"; then
@@ -117,13 +150,13 @@ validate_input() {
                 ;;
             "email")
                 if ! is_email "$value"; then
-                    echo "Error: Invalid email format youm must enter in this format john@example.com"
+                    echo "Error: Invalid email format you must enter in this format: 'john@example.com'"
                     continue
                 fi
                 ;;
             "phone")
                 if ! is_phone "$value"; then
-                    echo "Error: Invalid phone format. Must be 10-15 digits."
+                    echo "Error: Invalid phone format. Must be egyption number 'ex: 010-xxx-xxx-xx' digits."
                     continue
                 fi
                 ;;
@@ -133,8 +166,9 @@ validate_input() {
                 ;;
             esac
         fi
-        [[ -n "$value" ]] && reply="$value" || reply="N\A"
 
+        # Assign reply value
+        [[ -n "$value" ]] && reply="$value" || reply="N/A"
         return 0
     done
 }
@@ -183,9 +217,8 @@ table_init() {
     cat "$1/.$2.temp"
     echo
     clear_buffer
-    read -s -n 1 -p "Press [y/Y] to confirm initialization and any other key to cancel: " confirm
+    read -n 1 -p "Press [y/Y] to confirm initialization and any other key to cancel: " confirm
     [[ $confirm != [yY] ]] && {
-        clear
         echo -e "\ninitialization canceled"
         sleep 2
         return 1
@@ -199,7 +232,6 @@ table_init() {
     rm "$1/.$2.temp"
 
     write_headers "$1/.$2" "$1/$2"
-    clear
     echo -e "\nTable initialized succussfully"
     sleep 2
     crud_menu "$1/.$2" "$1/$2"
@@ -249,20 +281,20 @@ crud_menu() {
 
     done
 }
+
 # $1: Database Path
 # $2: Table to be created
 select_table() {
     [[ -s "$1/$2" ]] && crud_menu "$1/.$2" "$1/$2" || table_init "$1" "$2"
 }
 
-# $1: Table Metadata File
-# $2: Table Data File
 insert_record() {
+    local meta_file="$1"
+    local table_file="$2"
+
     clear
     echo "Welcome to the record insertion wizard!"
     echo "*****************************************"
-    local meta_file="$1"
-    local table_file="$2"
 
     declare -A field rules
     column_order=()
@@ -289,13 +321,8 @@ insert_record() {
     for attr in "${attributes[@]}"; do
         type="${field[$attr]}"
         constraints="${rules[$attr]}"
-        while :; do
-            validate_input "$attr" "$type" "$constraints" "Enter $attr value: "
-            if [[ $? -eq 0 ]]; then
-                new_row+="$reply:"
-                break
-            fi
-        done
+        validate_input "$attr" "$type" "$constraints" "Enter $attr value: "
+        new_row+="$reply:"
     done
 
     echo "$new_row" >>"$table_file"
@@ -304,21 +331,19 @@ insert_record() {
     if [[ "${field["ID"]}" == "auto" ]]; then
         sed -i "${pk_md}s/^pk:ID:[0-9]*/pk:ID:$new_id/" "$meta_file"
     fi
-    row_num=$((row_num + 1))
-    sed -i "${rows_md}s/rows:[0-9]*/rows:$(($row_num))/" "$meta_file"
+    sed -i "${rows_md}s/rows:[0-9]*/rows:$((++row_num))/" "$meta_file"
     sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$meta_file"
 
     echo "Row inserted successfully!"
 }
 
-# $1: Table Metadata File
-# $2: Table Data File
 delete_record() {
+    local meta_file="$1"
+    local table_file="$2"
+
     clear
     echo "Welcome to the record deletion wizard!"
     echo "*****************************************"
-    local meta_file="$1"
-    local table_file="$2"
 
     find_record "$table_file"
     [[ $? -ne 0 ]] && return 1
@@ -345,12 +370,12 @@ delete_record() {
     sleep 2
 }
 
-# $1: Table Data File
 find_record() {
+    local table_file="$1"
+
     clear
     echo "Welcome to the Find wizard!"
     echo "*****************************************"
-    local table_file="$1"
     clear_buffer
 
     read -p "Enter the column name: " key
@@ -373,10 +398,11 @@ find_record() {
         echo "Error: Value cannot be empty."
         sleep 2
         return 1
-    }
+    } || [[ "$value" =~ ^(N/A|n/a|NA|na)$ ]] && value="N/A"
 
     # Make `matching_rec` and `matching_count` global
-    matching_rec=$(sed -n "/^\([^:]*:\)\{$((key_index - 1))\}$value:/p" "$table_file")
+    escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
+    matching_rec=$(sed -n "/^\([^:]*:\)\{$((key_index - 1))\}$escaped_value:/p" "$table_file")
     matching_count=$([[ -n "$matching_rec" ]] && echo "$matching_rec" | wc -l || echo 0)
 
     [[ "$matching_count" -eq 0 ]] && {
@@ -392,15 +418,13 @@ find_record() {
     echo "$matching_rec" | column -t -s ':'
 }
 
-# $1: Table Metadata File
-# $2: Table Data File
 update_record() {
+    local meta_file="$1"
+    local table_file="$2"
+
     clear
     echo "Welcome to the record/s updating wizard!"
     echo "*****************************************"
-
-    local meta_file="$1"
-    local table_file="$2"
 
     clear_buffer
     read -p "Enter the column name: " key
@@ -474,7 +498,6 @@ update_record() {
     sleep 2
 }
 
-# $1: Table Data File
 show_all_records() {
     local table_file="$1"
     clear
