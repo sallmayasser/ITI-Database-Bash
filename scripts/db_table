@@ -9,7 +9,7 @@ is_empty() {
     for item in "$1"/*; do
         [[ $(wc -l <"$item") -gt 1 ]] && return 1
     done
-        return 0
+    return 0
 }
 
 ########################################################################################
@@ -21,6 +21,7 @@ is_empty() {
 # $2: Database or Table to be created
 # $3: 'db': Database, 'table': Table
 create() {
+    echo
     [[ -z "$2" ]] && {
         echo "Name cannot be whitespace"
         return 1
@@ -52,6 +53,7 @@ create() {
 # $2: Database or Table to be created
 # $3: 'db': Database, 'table': Table
 delete() {
+    echo
     del='y'
     [[ -z $2 ]] && {
         echo "Name cannot be whitespace"
@@ -69,7 +71,7 @@ delete() {
     if { [[ $3 == "db" ]] && ! is_empty "$1/$2"; } || [[ $3 == "table" && $(wc -l <"$item") -gt 1 ]]; then
         echo "'$2' is not empty, are you sure you want to delete it?"
         clear_buffer
-        read -s -n 1 -p "Press [y/Y] to confirm delete and any other key to cancel: " del
+        read -n 1 -p "Press [y/Y] to confirm delete and any other key to cancel: " del
         echo
     fi
 
@@ -89,6 +91,7 @@ delete() {
 rename() {
     clear_buffer
     read -p "Please enter the new name: " new_name && new_name=$(trim_tolower "$new_name")
+    echo
 
     [[ -z "$new_name" ]] && {
         echo "Name cannot be whitespace"
