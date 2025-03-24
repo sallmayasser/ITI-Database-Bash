@@ -10,7 +10,7 @@ Ensure you have the following installed:
 ## 📥 Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/project.git
+   git clone https://github.com/AdhamBasheir/ITI-Database-Bash
    cd project
    ```
 2. Set executable permissions for scripts:
@@ -20,7 +20,15 @@ Ensure you have the following installed:
 
 ## 📌 Project Features
 
-### 🔹 **Authentication Menu**
+### 📖 Table of Contents
+- [🔑 Authentication Menu](#-authentication-menu)
+- [🏠 Main Menu](#-main-menu)
+- [📂 Database Menu](#-database-menu)
+- [📋 Table Menu](#-table-menu)
+- [📝 CRUD Menu](#-crud-menu)
+
+
+#### 🔹 **Authentication Menu**
 Before accessing the database management system, users must authenticate or register. The authentication menu provides the following options:
 
 - 🔑 **Login** - Allows users to log in using their credentials.
@@ -28,7 +36,7 @@ Before accessing the database management system, users must authenticate or regi
 - 👤 **Enter as Guest** - Provides limited access without authentication.
 - ❌ **Exit** - Exits the application.
 
-### 🔹 **Main Menu**
+#### 🔹 **Main Menu**
 After authentication, users are presented with the main menu:
 
 - 🗄️ **DBMS** - Navigate to the database management system.
@@ -36,7 +44,7 @@ After authentication, users are presented with the main menu:
 - 🔄 **Logout** - Logs out the current user.
 - ❌ **Exit** - Closes the application.
 
-### 🔹 **Database Menu**
+#### 🔹 **Database Menu**
 Users can manage databases with the following operations:
 
 - 📁 **Create Database** - Allows users to create a new database.
@@ -47,7 +55,7 @@ Users can manage databases with the following operations:
 - 🔄 **Logout** - Logs out the current user.
 - 🚪 **Exit BDMS** - Closes the application.
 
-### 🔹 **Table Menu**
+#### 🔹 **Table Menu**
 Once a database is selected, users can manage tables:
 
 - ➕ **Create Table** - Defines a new table within the database.
@@ -57,7 +65,7 @@ Once a database is selected, users can manage tables:
 - 📜 **View Tables** - Lists all tables within the selected database.
 - 🔙 **Return to Main Menu** - Returns to the main database menu.
 
-### 🔹 **CRUD Menu (Table Operations)**
+#### 🔹 **CRUD Menu (Table Operations)**
 After selecting a table, users can perform record-level operations:
 
 - 📝 **Insert Record** - Adds new data into the table.
@@ -66,6 +74,10 @@ After selecting a table, users can perform record-level operations:
 - 🔍 **Select Record** - Searches for specific records within the table.
 - 📊 **Show All Records** - Displays all records in the table.
 - 🚪 **Exit** - Returns to the table menu.
+
+---
+
+🚀 **Enjoy managing your databases efficiently!** 🎯
 
 ## 🚀 Usage
 Run the main script:
