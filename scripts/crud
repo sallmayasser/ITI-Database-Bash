@@ -251,7 +251,7 @@ crud_menu() {
         echo "1) Insert Record"
         echo "2) Delete Record"
         echo "3) Update Record"
-        echo "4) Find Record"
+        echo "4) Select Record"
         echo "5) Show All Records"
         echo "6) Exit"
 
@@ -321,7 +321,7 @@ insert_record() {
     for attr in "${attributes[@]}"; do
         type="${field[$attr]}"
         constraints="${rules[$attr]}"
-        validate_input "$attr" "$type" "$constraints" "Enter $attr value: "
+        validate_input "$attr" "$type" "$constraints" "Enter $attr value (press enter for null value): "
         new_row+="$reply:"
     done
 
@@ -369,7 +369,29 @@ delete_record() {
     echo "Record(s) deleted successfully!"
     sleep 2
 }
+# $1: Table Data File
+columns_menu() {
+    local table_file="$1"
 
+    # Read the header
+    IFS=':' read -r -a headers <"$table_file"
+
+    echo "Select a column:"
+    for i in "${!headers[@]}"; do
+        echo "$((i + 1))- ${headers[i]}"
+    done
+
+    read -p "Enter column number: " choice
+
+    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "${#headers[@]}" ]]; then
+        echo "${headers[$((choice - 1))]}" # Only print the selected column name
+    else
+        echo "Invalid choice!" >&2
+        return 1
+    fi
+}
+
+# $1: Table Data File
 find_record() {
     local table_file="$1"
 
@@ -378,12 +400,19 @@ find_record() {
     echo "*****************************************"
     clear_buffer
 
-    read -p "Enter the column name: " key
-    [[ -z "$key" ]] && {
-        echo "Error: Key cannot be empty."
+    IFS=':' read -r -a headers <"$table_file"
+    echo "Select a column from the menu:"
+    for i in "${!headers[@]}"; do
+        echo "$((i + 1))) ${headers[i]}"
+    done
+    read -p "Enter column number: " choice
+    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "${#headers[@]}" ]]; then
+        key="${headers[$((choice - 1))]}"
+    else
+        echo "Invalid choice!"
         sleep 2
         return 1
-    }
+    fi
 
     key_index=$(awk -F ':' -v key="$key" 'NR==1 {for (i=1; i<=NF; i++) if ($i == key) print i}' "$table_file")
     [[ -z "$key_index" ]] && {
@@ -426,13 +455,21 @@ update_record() {
     echo "Welcome to the record/s updating wizard!"
     echo "*****************************************"
 
+    IFS=':' read -r -a headers <"$table_file"
+    echo "Select a column from the menu:"
+    for i in "${!headers[@]}"; do
+        echo "$((i + 1))) ${headers[i]}"
+    done
     clear_buffer
-    read -p "Enter the column name: " key
-    [[ -z "$key" ]] && {
-        echo "Error: Column name cannot be empty."
+    read -p "Enter column number: " choice
+    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "${#headers[@]}" ]]; then
+        key="${headers[$((choice - 1))]}"
+    else
+        echo "Invalid choice!"
         sleep 2
         return 1
-    }
+    fi
+
     [[ "$key" == "ID" ]] && {
         echo "Error: You cannot update the ID value."
         sleep 2
@@ -453,7 +490,7 @@ update_record() {
         echo "Error: Value cannot be empty."
         sleep 2
         return 1
-    }
+    } || [[ "$old_value" =~ ^(N/A|n/a|NA|na)$ ]] && old_value="N/A"
 
     local matching_rec=$(awk -F ':' -v idx="$key_index" -v val="$old_value" 'NR>1 && $idx == val' "$table_file")
 
@@ -467,7 +504,7 @@ update_record() {
     local field_type=$(awk -F ":" -v key="$key" '$2 == key {print $3}' "$meta_file")
     local field_constraints=$(awk -F ":" -v key="$key" '$2 == key {print $4}' "$meta_file")
 
-    validate_input "$key" "$field_type" "$field_constraints" "Enter the new value: "
+    validate_input "$key" "$field_type" "$field_constraints" "Enter the new value (press enter for null value): "
     [[ $? -eq 0 ]] &&
         new_value="$reply"
 
