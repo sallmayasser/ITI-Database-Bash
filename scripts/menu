@@ -14,19 +14,19 @@ db_menu() {
         echo "7) Exit BDMS."
 
         clear_buffer
-        read -s -n 1 option
+        read -r -s -n 1 option
         clear
 
         case $option in
         1)
             clear_buffer
-            read -p "Please enter the name of the Database you want to create: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to create: " db_name && db_name=$(trim_tolower "$db_name")
             create "$dbs_path" "$db_name" "db"
             sleep 2
             ;;
         2)
             clear_buffer
-            read -p "Please enter the name of the Database you want to select: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to select: " db_name && db_name=$(trim_tolower "$db_name")
             [[ -z "$db_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -43,7 +43,7 @@ db_menu() {
             ;;
         3)
             clear_buffer
-            read -p "Please enter the name of the Database you want to rename: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to rename: " db_name && db_name=$(trim_tolower "$db_name")
             [[ -z "$db_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -54,7 +54,7 @@ db_menu() {
             ;;
         4)
             clear_buffer
-            read -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(trim_tolower "$db_name")
             delete "$dbs_path" "$db_name" "db"
             sleep 2
             ;;
@@ -65,7 +65,7 @@ db_menu() {
                 echo -e "\n$content\n"
             }
             clear_buffer
-            read -s -n 1 -p "Press any key to continue..."
+            read -r -s -n 1 -p "Press any key to continue..."
             ;;
         6)
             echo "Goodbye $user!"
@@ -98,19 +98,19 @@ table_menu() {
         echo "6) Return to Main Menu."
 
         clear_buffer
-        read -s -n 1 option
+        read -r -s -n 1 option
         clear
 
         case $option in
         1)
             clear_buffer
-            read -p "Please enter the name of the Table you want to create: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to create: " table_name && table_name=$(trim_tolower "$table_name")
             create "$db_path" "$table_name" "table"
             sleep 2
             ;;
         2)
             clear_buffer
-            read -p "Please enter the name of the Table you want to select: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to select: " table_name && table_name=$(trim_tolower "$table_name")
             [[ -z "$table_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -127,7 +127,7 @@ table_menu() {
             ;;
         3)
             clear_buffer
-            read -p "Please enter the name of the Table you want to rename: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to rename: " table_name && table_name=$(trim_tolower "$table_name")
             [[ -z "$table_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -139,7 +139,7 @@ table_menu() {
             ;;
         4)
             clear_buffer
-            read -p "Please enter the name of the Table you want to delete: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to delete: " table_name && table_name=$(trim_tolower "$table_name")
             delete "$db_path" "$table_name" "table"
             sleep 2
             ;;
@@ -150,7 +150,7 @@ table_menu() {
                 echo -e "\n$content\n"
             }
             clear_buffer
-            read -s -n 1 -p "Press any key to continue..."
+            read -r -s -n 1 -p "Press any key to continue..."
             ;;
         6)
             return 0
