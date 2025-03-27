@@ -9,7 +9,7 @@ is_empty() {
     for item in "$1"/*; do
         [[ $(wc -l <"$item") -gt 1 ]] && return 1
     done
-        return 0
+    return 0
 }
 
 ########################################################################################
@@ -21,12 +21,13 @@ is_empty() {
 # $2: Database or Table to be created
 # $3: 'db': Database, 'table': Table
 create() {
+    echo
     [[ -z "$2" ]] && {
-        echo "Name cannot be whitespace"
+        echo -e "\nName cannot be whitespace."
         return 1
     }
     ! is_str "$2" && {
-        echo "Invalid name. The name must start with a letter and cannot contain ':' or '/'."
+        echo -e "\nInvalid name. The name must start with a letter and cannot contain ':' or '/'."
         return 1
     }
     [[ -e "$1/$2" ]] && {
@@ -42,6 +43,7 @@ create() {
         echo "db_name:$(basename "$1")" >>"$1/.$2"
         echo "table_name:$2" >>"$1/.$2"
     fi
+    echo "owner:$user" >>"$1/.$2"
     echo "created_by:$user" >>"$1/.$2"
     echo "created_at:$(date)" >>"$1/.$2"
     echo "'$2' created successfully."
@@ -52,13 +54,14 @@ create() {
 # $2: Database or Table to be created
 # $3: 'db': Database, 'table': Table
 delete() {
+    echo
     del='y'
     [[ -z $2 ]] && {
-        echo "Name cannot be whitespace"
+        echo -e "\nName cannot be whitespace."
         return 1
     }
     ! is_str "$2" && {
-        echo "Invalid name. The name must start with a letter and cannot contain ':' or '/'."
+        echo -e "\nInvalid name. The name must start with a letter and cannot contain ':' or '/'."
         return 1
     }
     [[ ! -e "$1/$2" ]] && {
@@ -69,7 +72,7 @@ delete() {
     if { [[ $3 == "db" ]] && ! is_empty "$1/$2"; } || [[ $3 == "table" && $(wc -l <"$item") -gt 1 ]]; then
         echo "'$2' is not empty, are you sure you want to delete it?"
         clear_buffer
-        read -s -n 1 -p "Press [y/Y] to confirm delete and any other key to cancel: " del
+        read -r -n 1 -p "Press [y/Y] to confirm delete and any other key to cancel: " del
         echo
     fi
 
@@ -88,14 +91,15 @@ delete() {
 # $2: 'db': Database, 'table': Table
 rename() {
     clear_buffer
-    read -p "Please enter the new name: " new_name && new_name=$(trim_tolower "$new_name")
+    read -r -p "Please enter the new name: " new_name && new_name=$(trim_tolower "$new_name")
+    echo
 
     [[ -z "$new_name" ]] && {
-        echo "Name cannot be whitespace"
+        echo -e "\nName cannot be whitespace."
         return 1
     }
     ! is_str "$new_name" && {
-        echo "Invalid name. The name must start with a letter and cannot contain ':' or '/'."
+        echo -e "\nInvalid name. The name must start with a letter and cannot contain ':' or '/'."
         return 1
     }
     { [[ $2 == 'db' ]] && path=$dbs_path; } || { [[ $2 == 'table' ]] && path=$db_path; }
@@ -106,8 +110,8 @@ rename() {
     mv "$path/$1" "$path/$new_name"
     mv "$path/.$1" "$path/.$new_name"
     echo "'$1' is renamed successfully to '$new_name'"
-    updated_at_md=$(awk -F ":" '/^updated_at:/ {print NR}' "$path/.$new_name")
-    name_md=$(awk -F ":" -v type="$2" '/^type_name:/ {print NR}' "$path/.$new_name")
+    updated_at_md=$(awk '/^updated_at:/ {print NR}' "$path/.$new_name")
+    name_md=$(awk -v type="$2" '/^type_name:/ {print NR}' "$path/.$new_name")
     sed -i "${name_md}s/$2_name:.*/$2_name:$new_name/" "$path/.$new_name"
     sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$path/.$new_name"
     return 0

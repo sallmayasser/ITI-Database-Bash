@@ -1,6 +1,166 @@
 #!/bin/bash
 ########################################################################################
 
+# helper functions:
+###################
+
+# $1: 'user': user, 'group': group
+login_func() {
+    clear
+    clear_buffer
+    read -r -p "Please enter your $1 name: " name && name=$(trim_tolower "$name")
+    [[ -z "$name" ]] && {
+        echo -e "\nName cannot be whitespace."
+        return 1
+    }
+    ! is_str "$name" && {
+        echo -e "\nInvalid Name. The name must start with a letter and cannot contain ':' or '/'."
+        return 1
+    }
+    if [[ $1 == 'group' ]]; then
+        if awk -v user="$user" -F ':' '/^members/ {for (i = 2; i <= NF; i++) if ($i == user) exit 0; exit 1}' "$auth_path/.$name"; then
+            echo -e "\nYou already are a member of the group '$name'."
+            return 1
+        fi
+        name=".$name"
+    fi
+
+    clear_buffer
+    read -r -s -p "Please enter your $1 password: " pass
+    if [[ ! -e "$auth_path/$name" || -z "$pass" || "$pass" != "$(awk -F ':' 'NR==2 {print $2}' "$auth_path/$name")" ]]; then
+        echo -e "\nInvalid $1 name or password."
+        return 1
+    fi
+
+    if [[ $1 == 'user' ]]; then
+        user="$name"
+        user_menu
+        return 0
+    elif [[ $1 == 'group' ]]; then
+        members_md=$(awk '/^members/ {print NR}' "$auth_path/$name")
+        sed -i "${members_md}s/$/:$user/" "$auth_path/$name"
+        updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/$name")
+        [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/$name" || echo "updated_at:$(date)" >>"$auth_path/$name"
+
+        groups_md=$(awk '/^groups/ {print NR}' "$auth_path/$user")
+        sed -i "${groups_md}s/$/:${name#.}/" "$auth_path/$user"
+        updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/$user")
+        [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/$user" || echo "updated_at:$(date)" >>"$auth_path/$user"
+
+        return 0
+    fi
+}
+
+# $1: 'user': user, 'group': group
+register_func() {
+    clear
+    clear_buffer
+    read -r -p "Please enter your $1 name: " name && name=$(trim_tolower "$name")
+
+    [[ -z "$name" ]] && {
+        echo -e "\nName cannot be whitespace."
+        return 1
+    }
+    [[ "$name" == 'guest' ]] && {
+        echo -e "\nName cannot be 'Guest'."
+        return 1
+    }
+    [[ "$name" == 'root' ]] && {
+        echo -e "\nName cannot be 'root'."
+        return 1
+    }
+    ! is_str "$name" && {
+        echo -e "\nInvalid Name. The name must start with a letter and cannot contain ':' or '/'."
+        return 1
+    }
+    [[ -e "$auth_path/$name" ]] && {
+        echo -e "\nuser '$name' already exists."
+        return 1
+    }
+    [[ -e "$auth_path/.$name" ]] && {
+        echo -e "\ngroup '$name' already exists."
+        return 1
+    }
+
+    clear_buffer
+    read -r -s -p "Please enter your password: " pass1
+    [[ -z "$pass1" ]] && {
+        echo -e "\nPassword cannot be whitespace."
+        return 1
+    }
+    echo
+    clear_buffer
+    read -r -s -p "Please enter your password again: " pass2
+    echo
+
+    [[ $pass1 != $pass2 ]] && echo -e "\nPasswords does not match. Registration Failed." && return 1
+
+    echo -e "\nRegistration Complete."
+    if [[ $1 == 'user' ]]; then
+        echo "username:$name" >>"$auth_path/$name"
+        echo "pass:$pass1" >>"$auth_path/$name"
+        echo "groups" >>"$auth_path/$name"
+        echo "created_at:$(date)" >>"$auth_path/$name"
+    elif [[ $1 == 'group' ]]; then
+        echo "groupname:$name" >>"$auth_path/.$name"
+        echo "pass:$pass1" >>"$auth_path/.$name"
+        echo "owner:$user" >>"$auth_path/.$name"
+        echo "members:$user" >>"$auth_path/.$name"
+        echo "created_by:$user" >>"$auth_path/.$name"
+        echo "created_at:$(date)" >>"$auth_path/.$name"
+
+        groups_md=$(awk '/^groups/ {print NR}' "$auth_path/$user")
+        sed -i "${groups_md}s/$/:$name/" "$auth_path/$user"
+
+        updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/$user")
+        [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/$user"
+        [[ -z $updated_at_md ]] && echo "updated_at:$(date)" >>"$auth_path/$user"
+    fi
+    return 0
+}
+
+########################################################################################
+
+mygroups() {
+    return 0
+}
+
+group_menu() {
+    while true; do
+        clear
+        echo "Welcome $user"
+        echo "1) Create Group"
+        echo "2) Manage Group"
+        echo "3) Join Group"
+        echo "4) Back"
+
+        clear_buffer
+        read -r -s -n 1 choice
+        clear
+
+        case "$choice" in
+        1)
+            clear_buffer
+            register_func "group"
+            sleep 2
+            ;;
+        2)
+            mygroups
+            ;;
+        3)
+            clear_buffer
+            login_func "group"
+            sleep 2
+            ;;
+        4) return 0 ;;
+        *)
+            echo "Invalid choice, please try again."
+            sleep 2
+            ;;
+        esac
+    done
+}
+
 user_menu() {
     while true; do
         clear
@@ -11,18 +171,17 @@ user_menu() {
         echo "4) Exit"
 
         clear_buffer
-        read -s -n 1 choice
+        read -r -s -n 1 choice
         clear
 
         case "$choice" in
-        1) return 0 ;;
+        1) db_menu ;;
         2)
-            echo "Groups"
-            sleep 2
+            group_menu
             ;;
         3)
             echo "Goodbye $user!"
-            sleep 2
+            user="Guest"
             return 1
             ;;
         4)
@@ -30,92 +189,47 @@ user_menu() {
             sleep 2
             exit 0
             ;;
-        *) echo "Invalid choice, please try again." ;;
+        *)
+            echo "Invalid choice, please try again."
+            sleep 2
+            ;;
         esac
-        sleep 2
+
     done
-}
-
-login_menu() {
-    clear
-    clear_buffer
-
-    read -p "Please Enter Your Name: " user_name && user_name=$(trim_tolower "$user_name")
-    [[ -z "$user_name" ]] && {
-        echo "Name cannot be whitespace"
-        sleep 2
-        return 1
-    }
-    read -s -p "Please Enter Your Password: " user_pass
-    if [[ ! -e "$auth_path/$user_name" || -z "$user_pass" || $user_pass != $(awk -F ':' 'NR==2 {print $2}' "$auth_path/$user_name") ]]; then
-        echo -e "\nInvalid user name or passward."
-        sleep 2
-        return 1
-    fi
-
-    user=$user_name
-    user_menu
-    return $?
-}
-
-register_menu() {
-    clear
-    clear_buffer
-    read -p "Please Enter Your Name: " user_name && user_name=$(trim_tolower "$user_name")
-
-    [[ -z "$user_name" ]] && {
-        echo "Name cannot be whitespace"
-        return 1
-    }
-    [[ -e "$auth_path/$user_name" ]] && {
-        echo "'$user_name' already exists."
-        return 1
-    }
-
-    read -s -p "Please Enter Your Password: " user_pass1
-    [[ -z "$user_pass1" ]] && {
-        echo "Password cannot be whitespace"
-        sleep 2
-        return 1
-    }
-    echo
-    read -s -p "Please Enter Your Password again: " user_pass2
-    echo
-
-    if [[ $user_pass1 == $user_pass2 ]]; then
-        echo -e "\nRegistration Complete."
-        echo -e "username:$user_name\npass:$user_pass1" >"$auth_path/$user_name"
-        return 0
-    else
-        echo -e "\nPasswords does not match. Registration Failed."
-        return 1
-    fi
 }
 
 auth_menu() {
     while true; do
         clear
-        echo "Welcome :"
+        echo "Welcome:"
         echo "1) Login"
         echo "2) Register"
         echo "3) Enter as a guest"
+        echo "4) Enter as root"
         echo "4) Exit"
 
         clear_buffer
-        read -s -n 1 choice
+        read -r -s -n 1 choice
         clear
 
         case "$choice" in
         1)
-            login_menu
-            [[ $? -eq 0 ]] && return 0
+            login_func "user"
+            [[ $? -eq 1 ]] && sleep 2
             ;;
         2)
-            register_menu
+            register_func "user"
             sleep 2
             ;;
-        3) return 0 ;;
+        3) user='Guest' && db_menu ;;
         4)
+            clear
+            clear_buffer
+            read -r -s -p "Please enter your $1 password: " pass
+            [[ pass != 'root' ]] && echo "Invalid password" && sleep 2 && continue
+            user='root' && db_menu
+            ;;
+        5)
             echo "Goodbye!"
             sleep 2
             exit 0
