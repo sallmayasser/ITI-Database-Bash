@@ -1,7 +1,59 @@
 #!/usr/bin/bash
 ########################################################################################
 
+# redirecting functions:
+########################
 db_menu() {
+    [[ "$user" != 'guest' ]] && db_menu_write || db_menu_read
+}
+
+# $1: Database Path
+# $2: selected Table
+table_menu() {
+    [[ "$user" == 'root' || "$user" == "$owner" ]] && table_menu_write && return 0
+
+    local user_perm=$(check_permissions "$1/.$2" "$user") && local user_groups=''
+    [[ $user_perm == 'write' ]] && table_menu_write && return 0
+
+    mapfile -t user_groups < <(awk -F ':' -v metadata=$"$1/.$2" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata)
+    if [[ $user_perm == 'read' ]]; then
+        for user_group in "${user_groups[@]}"; do
+            [[ $(check_permissions "$1/.$2" ".$user_group") == 'write' ]] && table_menu_write && return 0
+        done
+        table_menu_read && return 0
+    fi
+
+    for user_group in "${user_groups[@]}"; do
+        [[ $(check_permissions "$1/.$2" ".$user_group") == 'read' ]] && table_menu_read && return 0
+    done
+    echo "you don't have permission" && sleep 2 && return 1
+}
+
+# $1: Table Metadata File
+# $2: Table Data File
+crud_menu() {
+    [[ "$user" == 'root' || "$user" == "$owner" ]] && crud_menu_write && return 0
+
+    local user_perm=$(check_permissions "$1/.$2" "$user") && local user_groups=''
+    [[ $user_perm == 'write' ]] && crud_menu_write && return 0
+
+    mapfile -t user_groups < <(awk -F ':' -v metadata=$"$1/.$2" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata)
+    if [[ $user_perm == 'read' ]]; then
+        for user_group in "${user_groups[@]}"; do
+            [[ $(check_permissions "$1/.$2" ".$user_group") == 'write' ]] && crude_menu_write && return 0
+        done
+        crud_menu_read && return 0
+    fi
+
+    for user_group in "${user_groups[@]}"; do
+        [[ $(check_permissions "$1/.$2" ".$user_group") == 'read' ]] && crud_menu_read && return 0
+    done
+    echo "you don't have permission" && sleep 2 && return 1
+}
+
+########################################################################################
+
+db_menu_write() {
     while true; do
         clear
         echo "Welcome $user to our DBMS, select what you want to do:"
@@ -40,7 +92,7 @@ db_menu() {
             [[ ! -e "$dbs_path/$db_name" ]] && {
                 echo "'$db_name' does not exist."
                 sleep 2
-            } || table_menu "$db_name"
+            } || select_ "$dbs_path" "$db_name"
             ;;
         3)
             clear_buffer
@@ -61,7 +113,6 @@ db_menu() {
         4)
             clear_buffer
             read -r -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(trim_tolower "$db_name")
-            delete "$dbs_path" "$db_name" "db"
             sleep 2
             ;;
         5)
@@ -74,12 +125,18 @@ db_menu() {
             read -r -s -n 1 -p "Press any key to continue..."
             ;;
         6)
+            echo "logout at $(date)" >>"$logs_path/$user"
+            mv "$logs_path/$user" "$logs_path/.$user"
             echo "Goodbye $user!"
+            user="Guest"
             sleep 2
             return 0
             ;;
         7)
+            echo "logout at $(date)" >>"$logs_path/$user"
+            mv "$logs_path/$user" "$logs_path/.$user"
             echo "Goodbye $user!"
+            user="Guest"
             sleep 2
             exit 0
             ;;
@@ -91,7 +148,74 @@ db_menu() {
     done
 }
 
-table_menu() {
+db_menu_read() {
+    while true; do
+        clear
+        echo "Welcome $user to our DBMS, select what you want to do:"
+        echo "1) Select Database."
+        echo "2) View Databases."
+        echo "3) Logout."
+        echo "4) Exit BDMS."
+
+        clear_buffer
+        read -r -s -n 1 option
+        clear
+
+        case $option in
+        1)
+            clear_buffer
+            read -r -p "Please enter the name of the Database you want to select: " db_name && db_name=$(trim_tolower "$db_name")
+            [[ -z "$db_name" ]] && {
+                echo "Name cannot be whitespace"
+                sleep 2
+                continue
+            }
+            ! is_str "$db_name" && {
+                echo "Invalid name. The name must start with a letter and cannot contain ':' or '/'."
+                sleep 2
+                continue
+            }
+            [[ ! -e "$dbs_path/$db_name" ]] && {
+                echo "'$db_name' does not exist."
+                sleep 2
+            } || select_ "$dbs_path" "$db_name"
+            ;;
+        2)
+            content=$(ls "$dbs_path")
+            [[ -z "$content" ]] && echo -e "No Databases exist\n" || {
+                echo "Databases:"
+                echo -e "\n$content\n"
+            }
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        3)
+            echo "logout at $(date)" >>"$logs_path/$user"
+            mv "$logs_path/$user" "$logs_path/.$user"
+            echo "Goodbye $user!"
+            user="Guest"
+            sleep 2
+            return 0
+            ;;
+        4)
+            echo "logout at $(date)" >>"$logs_path/$user"
+            mv "$logs_path/$user" "$logs_path/.$user"
+            echo "Goodbye $user!"
+            user="Guest"
+            sleep 2
+            exit 0
+            ;;
+        *)
+            echo "Invalid option. Please try again."
+            sleep 2
+            ;;
+        esac
+    done
+}
+
+# $1: Database Path
+# $2: Table to be created
+table_menu_write() {
     db_path="$dbs_path/$1"
     while true; do
         clear
@@ -130,7 +254,7 @@ table_menu() {
             [[ ! -e "$db_path/$table_name" ]] && {
                 echo "'$table_name' does not exist."
                 sleep 2
-            } || select_table "$db_path" "$table_name"
+            } || select_ "$db_path" "$table_name"
             ;;
         3)
             clear_buffer
@@ -164,10 +288,158 @@ table_menu() {
             read -r -s -n 1 -p "Press any key to continue..."
             ;;
         6)
+            db_path=''
             return 0
             ;;
         *)
             echo "Invalid option. Please try again."
+            sleep 2
+            ;;
+        esac
+    done
+}
+
+# $1: Database Path
+# $2: Table to be created
+table_menu_read() {
+    db_path="$dbs_path/$1"
+    while true; do
+        clear
+        echo "Select what you want to do in Database '"$1"':"
+        echo "1) Select Table."
+        echo "2) View Tables."
+        echo "3) Return to Main Menu."
+
+        clear_buffer
+        read -r -s -n 1 option
+        clear
+
+        case $option in
+        1)
+            clear_buffer
+            read -r -p "Please enter the name of the Table you want to select: " table_name && table_name=$(trim_tolower "$table_name")
+            [[ -z "$table_name" ]] && {
+                echo "Name cannot be whitespace"
+                sleep 2
+                continue
+            }
+            ! is_str "$table_name" && {
+                echo "Invalid name. The name must start with a letter and cannot contain ':' or '/'."
+                sleep 2
+                continue
+            }
+            [[ ! -e "$db_path/$table_name" ]] && {
+                echo "'$table_name' does not exist."
+                sleep 2
+            } || select_ "$db_path" "$table_name"
+            ;;
+        2)
+            content=$(ls "$db_path")
+            [[ -z "$content" ]] && echo -e "No Tables in '$1' exist\n" || {
+                echo "Tables in '$1':"
+                echo -e "\n$content\n"
+            }
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        3)
+            db_path=''
+            return 0
+            ;;
+        *)
+            echo "Invalid option. Please try again."
+            sleep 2
+            ;;
+        esac
+    done
+}
+
+# $1: Table Metadata File
+# $2: Table Data File
+crud_menu_write() {
+    rows_md=$(awk '/^rows/ {print NR}' "$1")
+    pk_md=$(awk '/^pk/ {print NR}' "$1")
+    updated_at_md=$(awk '/^updated_at/ {print NR}' "$1")
+    col_name=''
+
+    while true; do
+        clear
+        echo "Select what you want to do in '$(basename $2)' table :"
+        echo "1) Insert Record"
+        echo "2) Delete Record"
+        echo "3) Update Record"
+        echo "4) Select Record"
+        echo "5) Show All Records"
+        echo "6) Exit"
+
+        clear_buffer
+        read -r -s -n 1 choice
+
+        case "$choice" in
+        1)
+            insert_record "$1" "$2"
+            sleep 2
+            ;;
+        2)
+            delete_record "$1" "$2"
+            sleep 2
+            ;;
+        3)
+            update_record "$1" "$2"
+            sleep 2
+            ;;
+        4)
+            find_record "$2" "$1"
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        5)
+            show_all_records "$2"
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        6) return 0 ;;
+        *)
+            echo "Invalid choice, please try again."
+            sleep 2
+            ;;
+        esac
+
+    done
+}
+
+# $1: Table Metadata File
+# $2: Table Data File
+crud_menu_read() {
+    rows_md=$(awk '/^rows/ {print NR}' "$1")
+    pk_md=$(awk '/^pk/ {print NR}' "$1")
+    updated_at_md=$(awk '/^updated_at/ {print NR}' "$1")
+    col_name=''
+
+    while true; do
+        clear
+        echo "Select what you want to do in '$(basename $2)' table :"
+        echo "1) Select Record"
+        echo "2) Show All Records"
+        echo "3) Exit"
+
+        clear_buffer
+        read -r -s -n 1 choice
+
+        case "$choice" in
+        1)
+            find_record "$2" "$1"
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        2)
+            show_all_records "$2"
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        3) return 0 ;;
+        *)
+            echo "Invalid choice, please try again."
             sleep 2
             ;;
         esac

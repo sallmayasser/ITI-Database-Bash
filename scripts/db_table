@@ -38,14 +38,20 @@ create() {
     if [[ $3 == 'db' ]]; then
         mkdir "$1/$2"
         echo "db_name:$2" >>"$1/.$2"
+        echo "created Database '$2' at $(date)" >>"$logs_path/$user"
+        echo "owner:$user" >>"$1/.$2"
     elif [[ $3 == 'table' ]]; then
         touch "$1/$2"
         echo "db_name:$(basename "$1")" >>"$1/.$2"
         echo "table_name:$2" >>"$1/.$2"
+        db_owner=$(awk -F ':' '/^owner/ {print $2}' "$dbs_path/.$(basename "$1")")
+        echo "owner:$db_owner" >>"$1/.$2"
+        echo "created Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/$user"
     fi
-    echo "owner:$user" >>"$1/.$2"
+    echo "permissions:init" >>"$1/.$2"
     echo "created_by:$user" >>"$1/.$2"
     echo "created_at:$(date)" >>"$1/.$2"
+
     echo "'$2' created successfully."
     return 0
 }
@@ -69,6 +75,12 @@ delete() {
         return 1
     }
 
+    db_owner=$(awk -F ':' '/^owner/ {print $2}' "$1/.$2")
+    if [[ "$user" != 'root' && "$user" != "$db_owner" ]]; then
+        echo "only database owner or root can delete $3"
+        return 1
+    fi
+
     if { [[ $3 == "db" ]] && ! is_empty "$1/$2"; } || [[ $3 == "table" && $(wc -l <"$item") -gt 1 ]]; then
         echo "'$2' is not empty, are you sure you want to delete it?"
         clear_buffer
@@ -83,6 +95,9 @@ delete() {
 
     rm -r "$1/$2"
     rm "$1/.$2"
+    [[ $3 == 'db' ]] && echo "deleted Database '$2' at $(date)" >>"$logs_path/$user"
+    [[ $3 == 'table' ]] && echo "deleted Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/$user"
+
     echo "'$2' is deleted successfully."
     return 0
 }
@@ -109,10 +124,34 @@ rename() {
     }
     mv "$path/$1" "$path/$new_name"
     mv "$path/.$1" "$path/.$new_name"
-    echo "'$1' is renamed successfully to '$new_name'"
     updated_at_md=$(awk '/^updated_at:/ {print NR}' "$path/.$new_name")
     name_md=$(awk -v type="$2" '/^type_name:/ {print NR}' "$path/.$new_name")
     sed -i "${name_md}s/$2_name:.*/$2_name:$new_name/" "$path/.$new_name"
     sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$path/.$new_name"
+    [[ $3 == 'db' ]] && echo "renamed Database '$1' to '$new_name' at $(date)" >>"$logs_path/$user"
+    [[ $3 == 'table' ]] && echo "renamed Table '$1' to '$new_name' in Database '$(basename "$db_path")' at $(date)" >>"$logs_path/$user"
+
+    echo "'$1' is renamed successfully to '$new_name'"
     return 0
+}
+
+# $1: parent directory
+# $2: selected Database or Table
+select_() {
+    permissions_md=$(awk '/^permissions/ {print NR}' "$1/.$2")
+    permissions_value=$(awk -F ':' -v permissions_md="$permissions_md" 'NR==permissions_md {print $2}' "$1/.$2")
+    owner=$(awk -F ':' '/^owner/ {print $2}' "$1/.$2")
+
+    if [[ $permissions_value != "init" ]]; then
+        [[ -d "$1/$2" ]] && table_menu "$1" "$2"
+        [[ -f "$1/$2" ]] && crud_menu "$1/.$2" "$1/$2"
+    else
+        [[ "$user" == 'root' || "$user" == "$owner" ]] || {
+            echo "Table is not initialized"
+            sleep 2
+            return 1
+        }
+        [[ -d "$1/$2" ]] && db_init "$2"
+        [[ -f "$1/$2" ]] && table_init "$1" "$2"
+    fi
 }
