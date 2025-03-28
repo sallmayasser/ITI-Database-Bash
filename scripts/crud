@@ -266,7 +266,6 @@ table_init() {
 # $2: Table Data File
 crud_menu() {
     rows_md=$(awk '/^rows/ {print NR}' "$1")
-    row_num=$(awk -F ":" -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
     pk_md=$(awk '/^pk/ {print NR}' "$1")
     updated_at_md=$(awk '/^updated_at/ {print NR}' "$1")
     col_name=''
@@ -338,14 +337,7 @@ insert_record() {
 
     new_row=""
 
-    if [[ "${field["ID"]}" == "auto" ]]; then
-        last_id=$(awk -F':' -v pk_md=$pk_md 'NR==pk_md {print $NF}' "$meta_file")
-        new_id=$((last_id + 1))
-        new_row="$new_id:"
-        attributes=("${column_order[@]:1}")
-    else
-        attributes=("${column_order[@]}")
-    fi
+    [[ "${field["ID"]}" == "auto" ]] && attributes=("${column_order[@]:1}") || attributes=("${column_order[@]}")
 
     for attr in "${attributes[@]}"; do
         type="${field[$attr]}"
@@ -355,12 +347,15 @@ insert_record() {
         new_row+="$reply:"
     done
 
+    last_id=$(awk -F':' -v pk_md=$pk_md 'NR==pk_md {print $NF}' "$meta_file")
+    new_row="$((++last_id)):${new_row}"
     echo "$new_row" >>"$table_file"
 
     #  increment the last_id i  meta data file
     if [[ "${field["ID"]}" == "auto" ]]; then
-        sed -i "${pk_md}s/^pk:ID:[0-9]*/pk:ID:$new_id/" "$meta_file"
+        sed -i "${pk_md}s/^pk:ID:[0-9]*/pk:ID:$last_id/" "$meta_file"
     fi
+    row_num=$(awk -F ":" -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
     sed -i "${rows_md}s/rows:[0-9]*/rows:$((++row_num))/" "$meta_file"
     sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$meta_file"
 
@@ -391,7 +386,7 @@ delete_record() {
     $idx != val { print }
     ' "$table_file" >temp_file && mv temp_file "$table_file"
 
-    row_num=$(($row_num - $matching_count))
+    row_num=$(($(awk -F ":" -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1") - $matching_count))
     sed -i "${rows_md}s/rows:[0-9]*/rows:$row_num/" "$meta_file"
     sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$meta_file"
 
@@ -425,7 +420,7 @@ find_record() {
 
     # Make `matching_rec` and `matching_count` global
     escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
-    matching_rec=$(sed -n "/^\([^:]*:\)\{$((key_index - 1))\}$escaped_value:/p" "$table_file")
+    matching_rec=$(sed '1d' "$table_file" | sed -n "/^\([^:]*:\)\{$((key_index - 1))\}$escaped_value:/p")
     matching_count=$([[ -n "$matching_rec" ]] && echo "$matching_rec" | wc -l || echo 0)
 
     [[ "$matching_count" -eq 0 ]] && {
