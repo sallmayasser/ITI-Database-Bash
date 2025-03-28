@@ -490,7 +490,6 @@ update_record() {
         echo -e "\nUpdating cancelled."
         return 1
     }
-    new_value=$(echo "$new_value" | sed 's/\\/\\\\/g')
 
     awk -F ':' -v idx="$key_index" -v old_val="$old_value" -v new_val="$new_value" '
        BEGIN { OFS = ":" }
