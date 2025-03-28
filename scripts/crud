@@ -13,7 +13,7 @@ restriction() {
     while [[ $counter -gt 0 ]]; do
         echo
         clear_buffer
-        read -p "Enter the column number for the $2 key, or 0 to finish: " key
+        read -r -p "Enter the column number for the $2 key, or 0 to finish: " key
 
         if is_int "$key"; then
             [[ $key -eq 0 ]] && break
@@ -42,7 +42,7 @@ key_init() {
         echo
 
         clear_buffer
-        read -p "Please enter column $(($i + 1)) Name: " colName && colName=$(trim_tolower "$colName")
+        read -r -p "Please enter column $(($i + 1)) Name: " colName && colName=$(trim_tolower "$colName")
         [[ -z "$colName" ]] && {
             echo "Column name cannot be whitespace"
             ((i--))
@@ -51,7 +51,7 @@ key_init() {
         line+=":$colName"
 
         clear_buffer
-        read -p "Please enter column $(($i + 1)) Data Type (int/str/email/phone): " colType && colType=$(trim_tolower "$colType")
+        read -r -p "Please enter column $(($i + 1)) Data Type (int/str/email/phone): " colType && colType=$(trim_tolower "$colType")
         [[ -z "$colType" ]] && {
             echo "Data Type cannot be whitespace"
             ((i--))
@@ -67,16 +67,42 @@ key_init() {
     done
 }
 
-write_headers() {
-    local meta_file="$1"
-    local table_file="$2"
-
-    # Generate headers
-    header=$(awk -F ':' '/^key:/ {print $2}' "$meta_file" | paste -sd ":" -)
-
-    # Write headers to the DB file
-    echo "$header" >"$table_file"
+# $1: Metadata file
+get_headers() {
+    awk -F ':' '/^key:/ {print $2}' "$1" | paste -s -d ":" -
 }
+
+# $1: Metadata File
+# $2: flag='noID'
+columns_menu() {
+    local meta_file="$1"
+    headers=$(get_headers "$meta_file")
+    num_cols=$(echo "$headers" | tr ':' '\n' | wc -l)
+
+    echo "Select a column:"
+    if [[ $2 != 'noID' ]]; then
+        echo "$headers" | tr ':' '\n' | nl -w 1 -s ") "
+    else
+        echo "$headers" | cut -d ':' -f2- | tr ':' '\n' | nl -w 1 -s ") "
+        ((num_cols--))
+    fi
+
+    echo
+    clear_buffer
+    read -r -p "Enter column number: " col_choice
+
+    if ! is_int "$col_choice" || [[ $col_choice -lt 1 || $col_choice -gt $num_cols ]]; then
+        col_choice=''
+        col_name=''
+        echo "Invalid choice!"
+        return 1
+    fi
+
+    [[ $2 == 'noID' ]] && ((col_choice++))
+    col_name=$(echo "$headers" | cut -d ':' -f$((col_choice)))
+    return 0
+}
+
 validate_input() {
     local field="$1"
     local type="$2"
@@ -102,23 +128,22 @@ validate_input() {
     while :; do
         echo
         clear_buffer
-        read -p "$msg" value
-        value=$(trim_tolower "$value")
+        read -r -p "$msg" value && value=$(trim_tolower "$value")
         [[ "$value" == "N/A" ]] && value=""
 
         # Check PK constraint (must be unique and not null)
         [[ "$constraints" == *"pk"* ]] && {
-            [[ -z "$value" ]] && echo "Error: $field (Primary Key) cannot be empty!" && continue
+            [[ -z "$value" ]] && echo "Error: '$field' (Primary Key) cannot be empty!" && continue
             if [[ "$constraints" == *"unique"* ]]; then
                 if awk -F ":" -v col="$col_index" -v val="$value" 'NR > 1 && $col == val {exit 1}' "$table_file"; then
-                    echo "Error: $field (Primary Key) must be unique!"
+                    echo "Error: '$field' (Primary Key) must be unique!"
                     continue
                 fi
             fi
         }
 
         # Check NOT NULL constraint
-        [[ "$constraints" == *"notnull"* && -z "$value" ]] && echo "Error: $field cannot be empty." && continue
+        [[ "$constraints" == *"notnull"* && -z "$value" ]] && echo "Error: '$field' cannot be empty." && continue
 
         # Check UNIQUE constraint (if not a PK)
         if [[ "$constraints" == *"unique"* ]]; then
@@ -128,7 +153,7 @@ validate_input() {
                         exit 1;
                     }
                 }' "$table_file"; then
-                echo " Error: This $field already exists. Please enter a different value."
+                echo "Error: This '$field' already exists. Please enter a different value."
                 continue
 
             fi
@@ -138,13 +163,13 @@ validate_input() {
             case "$type" in
             "str")
                 if ! is_str "$value"; then
-                    echo "Error: $field must start with letter."
+                    echo "Error: '$field' must start with letter."
                     continue
                 fi
                 ;;
             "int")
                 if ! is_int "$value"; then
-                    echo "Error: $field must be an integer."
+                    echo "Error: '$field' must be an integer."
                     continue
                 fi
                 ;;
@@ -161,7 +186,7 @@ validate_input() {
                 fi
                 ;;
             *)
-                echo "Error: Unknown type $type for $field."
+                echo "Error: Unknown type '$type' for '$field'."
                 continue
                 ;;
             esac
@@ -181,7 +206,7 @@ table_init() {
     clear
     while true; do
         clear_buffer
-        read -p "Please enter number of columns: " colNum
+        read -r -p "Please enter number of columns: " colNum
         [[ -z "$colNum" ]] && {
             echo -e "Number of columns cannot be whitespace\n"
             continue
@@ -196,7 +221,7 @@ table_init() {
     while true; do
         echo
         clear_buffer
-        read -p "Enter the column number for the primary key, or 0 for auto-generated ID: " pk
+        read -r -p "Enter the column number for the primary key, or 0 for auto-generated ID: " pk
         is_int "$pk" && [[ $key -ge 0 ]] && [[ $key -le $colNum ]] && break
         echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 for auto-generated ID."
     done
@@ -217,7 +242,7 @@ table_init() {
     cat "$1/.$2.temp"
     echo
     clear_buffer
-    read -n 1 -p "Press [y/Y] to confirm initialization and any other key to cancel: " confirm
+    read -r -n 1 -p "Press [y/Y] to confirm initialization and any other key to cancel: " confirm
     [[ $confirm != [yY] ]] && {
         echo -e "\ninitialization canceled"
         sleep 2
@@ -231,7 +256,7 @@ table_init() {
     cat "$1/.$2.temp" >>"$1/.$2"
     rm "$1/.$2.temp"
 
-    write_headers "$1/.$2" "$1/$2"
+    get_headers "$1/.$2" >"$table_file"
     echo -e "\nTable initialized succussfully"
     sleep 2
     crud_menu "$1/.$2" "$1/$2"
@@ -240,14 +265,15 @@ table_init() {
 # $1: Table Metadata File
 # $2: Table Data File
 crud_menu() {
-    rows_md=$(awk -F ":" '/^rows:/ {print NR}' "$1")
-    row_num=$(awk -F':' -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
-    pk_md=$(awk -F ":" '/^pk:/ {print NR}' "$1")
-    updated_at_md=$(awk -F ":" '/^updated_at:/ {print NR}' "$1")
+    rows_md=$(awk '/^rows/ {print NR}' "$1")
+    row_num=$(awk -F ":" -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
+    pk_md=$(awk '/^pk/ {print NR}' "$1")
+    updated_at_md=$(awk '/^updated_at/ {print NR}' "$1")
+    col_name=''
 
     while true; do
         clear
-        echo "Select what you want to do in table :"
+        echo "Select what you want to do in '$(basename $2)' table :"
         echo "1) Insert Record"
         echo "2) Delete Record"
         echo "3) Update Record"
@@ -256,21 +282,30 @@ crud_menu() {
         echo "6) Exit"
 
         clear_buffer
-        read -s -n 1 choice
+        read -r -s -n 1 choice
 
         case "$choice" in
-        1) insert_record "$1" "$2" ;;
-        2) delete_record "$1" "$2" ;;
-        3) update_record "$1" "$2" ;;
+        1)
+            insert_record "$1" "$2"
+            sleep 2
+            ;;
+        2)
+            delete_record "$1" "$2"
+            sleep 2
+            ;;
+        3)
+            update_record "$1" "$2"
+            sleep 2
+            ;;
         4)
-            find_record "$2"
+            find_record "$2" "$1"
             clear_buffer
-            read -s -n 1 -p "Press any key to continue..."
+            read -r -s -n 1 -p "Press any key to continue..."
             ;;
         5)
             show_all_records "$2"
             clear_buffer
-            read -s -n 1 -p "Press any key to continue..."
+            read -r -s -n 1 -p "Press any key to continue..."
             ;;
         6) return 0 ;;
         *)
@@ -280,12 +315,6 @@ crud_menu() {
         esac
 
     done
-}
-
-# $1: Database Path
-# $2: Table to be created
-select_table() {
-    [[ -s "$1/$2" ]] && crud_menu "$1/.$2" "$1/$2" || table_init "$1" "$2"
 }
 
 insert_record() {
@@ -298,7 +327,7 @@ insert_record() {
 
     declare -A field rules
     column_order=()
-
+    clear_buffer
     while IFS=: read -r key name type constraints; do
         if [[ "$key" == "key" ]]; then
             field["$name"]="$type"
@@ -321,7 +350,8 @@ insert_record() {
     for attr in "${attributes[@]}"; do
         type="${field[$attr]}"
         constraints="${rules[$attr]}"
-        validate_input "$attr" "$type" "$constraints" "Enter $attr value (press enter for null value): "
+        [[ "$constraints" =~ notnull ]] && msg="Enter $attr value (cannot be empty): " || msg="Enter $attr value (press enter for empty value): "
+        validate_input "$attr" "$type" "$constraints" "$msg"
         new_row+="$reply:"
     done
 
@@ -334,7 +364,7 @@ insert_record() {
     sed -i "${rows_md}s/rows:[0-9]*/rows:$((++row_num))/" "$meta_file"
     sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$meta_file"
 
-    echo "Row inserted successfully!"
+    echo -e "\nRow inserted successfully!"
 }
 
 delete_record() {
@@ -345,15 +375,14 @@ delete_record() {
     echo "Welcome to the record deletion wizard!"
     echo "*****************************************"
 
-    find_record "$table_file"
+    find_record "$table_file" "$meta_file"
     [[ $? -ne 0 ]] && return 1
 
     echo "*****************************************"
     clear_buffer
-    read -n 1 -p "Are you sure you want to delete $matching_count record(s)? (y/n) " confirmation
+    read -r -n 1 -p "Are you sure you want to delete $matching_count record(s)? (y/Y) " confirmation
     [[ "$confirmation" != [Yy] ]] && {
         echo -e "\nDeletion cancelled."
-        sleep 2
         return 1
     }
 
@@ -366,68 +395,33 @@ delete_record() {
     sed -i "${rows_md}s/rows:[0-9]*/rows:$row_num/" "$meta_file"
     sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$meta_file"
 
-    echo "Record(s) deleted successfully!"
-    sleep 2
-}
-# $1: Table Data File
-columns_menu() {
-    local table_file="$1"
-
-    # Read the header
-    IFS=':' read -r -a headers <"$table_file"
-
-    echo "Select a column:"
-    for i in "${!headers[@]}"; do
-        echo "$((i + 1))- ${headers[i]}"
-    done
-
-    read -p "Enter column number: " choice
-
-    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "${#headers[@]}" ]]; then
-        echo "${headers[$((choice - 1))]}" # Only print the selected column name
-    else
-        echo "Invalid choice!" >&2
-        return 1
-    fi
+    echo -e "\nRecord(s) deleted successfully!"
 }
 
 # $1: Table Data File
+# $2: Meta Data File
 find_record() {
     local table_file="$1"
+    local meta_file="$2"
 
     clear
     echo "Welcome to the Find wizard!"
     echo "*****************************************"
+
     clear_buffer
+    columns_menu "$meta_file"
+    [[ $? -ne 0 ]] && return 1
 
-    IFS=':' read -r -a headers <"$table_file"
-    echo "Select a column from the menu:"
-    for i in "${!headers[@]}"; do
-        echo "$((i + 1))) ${headers[i]}"
-    done
-    read -p "Enter column number: " choice
-    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "${#headers[@]}" ]]; then
-        key="${headers[$((choice - 1))]}"
-    else
-        echo "Invalid choice!"
-        sleep 2
-        return 1
-    fi
-
+    key=$col_name
     key_index=$(awk -F ':' -v key="$key" 'NR==1 {for (i=1; i<=NF; i++) if ($i == key) print i}' "$table_file")
     [[ -z "$key_index" ]] && {
-        echo "Error: Column '$key' not found."
-        sleep 2
+        echo -e "\nError: Column '$key' not found."
         return 1
     }
 
     clear_buffer
-    read -p "Enter the value: " value
-    [[ -z "$value" ]] && {
-        echo "Error: Value cannot be empty."
-        sleep 2
-        return 1
-    } || [[ "$value" =~ ^(N/A|n/a|NA|na)$ ]] && value="N/A"
+    read -r -p "Enter the value: " value && value=$(trim_tolower "$value")
+    [[ -z "$value" || "$value" =~ ^(n/a|na)$ ]] && value="N/A"
 
     # Make `matching_rec` and `matching_count` global
     escaped_value=$(echo "$value" | sed 's/[\/&]/\\&/g')
@@ -435,16 +429,17 @@ find_record() {
     matching_count=$([[ -n "$matching_rec" ]] && echo "$matching_rec" | wc -l || echo 0)
 
     [[ "$matching_count" -eq 0 ]] && {
-        echo "Error: No matching records found."
-        sleep 2
+        echo -e "\nError: No matching records found."
         return 1
     }
 
     clear
-    echo -e "\nMatching record(s):"
+    echo "Matching record(s):"
     echo "*****************************************"
-    sed -n '1p' "$table_file" | column -t -s ':'
-    echo "$matching_rec" | column -t -s ':'
+    {
+        sed -n '1p' "$table_file"
+        echo "$matching_rec"
+    } | column -t -s ':'
 }
 
 update_record() {
@@ -455,72 +450,56 @@ update_record() {
     echo "Welcome to the record/s updating wizard!"
     echo "*****************************************"
 
-    IFS=':' read -r -a headers <"$table_file"
-    echo "Select a column from the menu:"
-    for i in "${!headers[@]}"; do
-        echo "$((i + 1))) ${headers[i]}"
-    done
     clear_buffer
-    read -p "Enter column number: " choice
-    if [[ "$choice" =~ ^[0-9]+$ && "$choice" -ge 1 && "$choice" -le "${#headers[@]}" ]]; then
-        key="${headers[$((choice - 1))]}"
+    headers=$(get_headers "$meta_file")
+    if [[ "$headers" =~ ^ID ]]; then
+        columns_menu "$meta_file" 'noID'
     else
-        echo "Invalid choice!"
-        sleep 2
-        return 1
+        columns_menu "$meta_file"
     fi
 
-    [[ "$key" == "ID" ]] && {
-        echo "Error: You cannot update the ID value."
-        sleep 2
-        return 1
-    }
+    [[ $? -eq 1 ]] && return 1
+    key=$col_name
 
     # Find column index
     local key_index=$(awk -F ':' -v key="$key" 'NR==1 {for (i=1; i<=NF; i++) if ($i == key) print i}' "$table_file")
     [[ -z "$key_index" ]] && {
-        echo "Error: Column '$key' not found."
-        sleep 2
+        echo -e "\nError: Column '$key' not found."
         return 1
     }
 
     clear_buffer
-    read -p "Enter the value to update: " old_value
-    [[ -z "$old_value" ]] && {
-        echo "Error: Value cannot be empty."
-        sleep 2
-        return 1
-    } || [[ "$old_value" =~ ^(N/A|n/a|NA|na)$ ]] && old_value="N/A"
+    read -r -p "Enter the value to update: " old_value && old_value=$(trim_tolower "$old_value")
+    [[ -z "$old_value" || "$old_value" =~ ^(n/a|na)$ ]] && old_value="N/A"
 
     local matching_rec=$(awk -F ':' -v idx="$key_index" -v val="$old_value" 'NR>1 && $idx == val' "$table_file")
 
     local matching_count=$([[ -n "$matching_rec" ]] && echo "$matching_rec" | wc -l || echo 0)
     [[ "$matching_count" -eq 0 ]] && {
-        echo "Error: No matching records found."
-        sleep 2
+        echo -e "\nError: No matching records found."
         return 1
     }
 
     local field_type=$(awk -F ":" -v key="$key" '$2 == key {print $3}' "$meta_file")
     local field_constraints=$(awk -F ":" -v key="$key" '$2 == key {print $4}' "$meta_file")
 
-    validate_input "$key" "$field_type" "$field_constraints" "Enter the new value (press enter for null value): "
+    [[ $constraints =~ notnull ]] && msg="Enter $attr value (cannot be empty): " || msg="Enter $attr value (press enter for empty value): "
+
+    validate_input "$key" "$field_type" "$field_constraints" "$msg"
     [[ $? -eq 0 ]] &&
         new_value="$reply"
 
     clear_buffer
-    read -n 1 -p "Are you sure you want to update $matching_count record(s)? (y/n) " confirmation
+    read -r -n 1 -p "Are you sure you want to update $matching_count record(s)? (y/Y) " confirmation
     [[ "$confirmation" != [Yy] ]] && {
         echo -e "\nUpdating cancelled."
-        sleep 2
         return 1
     }
     new_value=$(echo "$new_value" | sed 's/\\/\\\\/g')
+
     awk -F ':' -v idx="$key_index" -v old_val="$old_value" -v new_val="$new_value" '
-       BEGIN {
-        OFS = ":";
-        }
-       NR == 1 { print; next } 
+       BEGIN { OFS = ":" }
+       NR == 1 { print; next }
        {
          if ($idx == old_val) {
              $idx = new_val
@@ -531,12 +510,18 @@ update_record() {
 
     sed -i "/^updated_at:/s/.*/updated_at: $(date)/" "$meta_file"
 
-    echo "Record(s) updated successfully!"
-    sleep 2
+    echo -e "\nRecord(s) updated successfully!"
 }
 
 show_all_records() {
     local table_file="$1"
     clear
-    column -t -s ':' "$table_file"
+    [[ $(wc -l <"$table_file") -gt 1 ]] && column -t -s ':' "$table_file" && return 0
+    echo "No records found." && return 1
+}
+
+# $1: Database Path
+# $2: Table to be created
+select_table() {
+    [[ -s "$1/$2" ]] && crud_menu "$1/.$2" "$1/$2" || table_init "$1" "$2"
 }

@@ -19,8 +19,4 @@ dbs_path="$(dirname "$0")/.DBs"
 auth_path="$(dirname "$0")/.Credentials"
 [[ ! -e "$auth_path" ]] && mkdir "$auth_path"
 
-user="Guest"
-while true; do
-    auth_menu
-    db_menu
-done
+auth_menu
