@@ -6,7 +6,7 @@ clear_buffer() {
     read -r -s -t 0.1 -N 999999
 }
 
-# Function to remove leading/trailing spaces and convert the string to lowercase
+# Function to remove leading/trailing spaces, squeeze inner spaces, and convert the string to lowercase 
 trim_tolower() {
     echo "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[[:space:]]\+/ /g;s/.*/\L&/'
 }
