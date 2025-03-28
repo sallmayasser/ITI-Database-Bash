@@ -206,7 +206,7 @@ auth_menu() {
         echo "2) Register"
         echo "3) Enter as a guest"
         echo "4) Enter as root"
-        echo "4) Exit"
+        echo "5) Exit"
 
         clear_buffer
         read -r -s -n 1 choice
@@ -225,8 +225,8 @@ auth_menu() {
         4)
             clear
             clear_buffer
-            read -r -s -p "Please enter your $1 password: " pass
-            [[ pass != 'root' ]] && echo "Invalid password" && sleep 2 && continue
+            read -r -s -p "Please enter root password: " pass
+            [[ "$pass" != 'root' ]] && echo -e "\nInvalid password" && sleep 2 && continue
             user='root' && db_menu
             ;;
         5)
