@@ -13,7 +13,7 @@ restriction() {
     while [[ $counter -gt 0 ]]; do
         echo
         clear_buffer
-        read -r -r -p "Enter the column number for the $2 key, or 0 to finish: " key
+        read -r -p "Enter the column number for the $2 key, or 0 to finish: " key
 
         if is_int "$key"; then
             [[ $key -eq 0 ]] && break
@@ -265,10 +265,10 @@ table_init() {
 # $1: Table Metadata File
 # $2: Table Data File
 crud_menu() {
-    rows_md=$(awk -F ":" '/^rows:/ {print NR}' "$1")
-    row_num=$(awk -F':' -v rows_md="$rows_md" 'NR==rows_md {print $NF}' "$1")
-    pk_md=$(awk -F ":" '/^pk:/ {print NR}' "$1")
-    updated_at_md=$(awk -F ":" '/^updated_at:/ {print NR}' "$1")
+    rows_md=$(awk '/^rows/ {print NR}' "$1")
+    pk_md=$(awk '/^pk/ {print NR}' "$1")
+    updated_at_md=$(awk '/^updated_at/ {print NR}' "$1")
+    col_name=''
 
     while true; do
         clear
