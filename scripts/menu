@@ -1,54 +1,72 @@
 #!/usr/bin/bash
 ########################################################################################
 
+# helper functions:
+###################
+
+# $?: 0: none, 1: read, 2: write, 3: read/write
+group_perm_func() {
+    metadata=$1 && user_groups=$2
+    read_perm=0 && write_perm=0
+    for user_group in "${user_groups[@]}"; do
+        check_perm=$(check_permissions "$metadata" ".$user_group")
+        [[ $check_perm == 'read' ]] && read_perm=1
+        [[ $check_perm == 'write' ]] && write_perm=1
+    done
+    return $((read_perm + write_perm * 2))
+}
+
+########################################################################################
+
 # redirecting functions:
 ########################
 db_menu() {
     [[ "$user" != 'guest' ]] && db_menu_write || db_menu_read
 }
 
-# $1: Database Path
-# $2: selected Table
+# $1: selected Database
 table_menu() {
-    [[ "$user" == 'root' || "$user" == "$owner" ]] && table_menu_write && return 0
+    [[ "$user" == 'root' || "$user" == "$owner" ]] && table_menu_write "$1" && return 0
+    [[ "$user" == 'guest' ]] && table_menu_read "$1" && return 0
 
-    local user_perm=$(check_permissions "$1/.$2" "$user") && local user_groups=''
-    [[ $user_perm == 'write' ]] && table_menu_write && return 0
-
-    mapfile -t user_groups < <(awk -F ':' -v metadata=$"$1/.$2" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata)
-    if [[ $user_perm == 'read' ]]; then
-        for user_group in "${user_groups[@]}"; do
-            [[ $(check_permissions "$1/.$2" ".$user_group") == 'write' ]] && table_menu_write && return 0
-        done
-        table_menu_read && return 0
+    user_perm=$(check_permissions "$dbs_path/.$1" "$user")
+    mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$dbs_path/.$1")
+    group_perm_func "$dbs_path/.$1" "$user_groups"
+    gruop_perm=$?
+    if [[ "$permissions_value" == 'private' ]]; then
+        [[ $group_perm -eq 3 ]] && $group_perm=2
+        [[ "$user_perm" == 'write' || $group_perm -eq 2 ]] && table_menu_write "$1" && return 0
+        [[ "$user_perm" == 'read' || $group_perm -eq 1 ]] && table_menu_read "$1" && return 0
+        echo "you don't have permission" && sleep 2 && return 1
+    elif [[ "$permissions_value" == 'public' ]]; then
+        [[ $group_perm -eq 3 ]] && $group_perm=1
+        [[ "$user_perm" == 'read' || $group_perm -eq 1 ]] && echo "you don't have permission" && sleep 2 && return 1
+        [[ "$user_perm" == 'write' || $group_perm -eq 2 ]] && table_menu_read "$1" && return 0
+        table_menu_write "$1" && return 0
     fi
-
-    for user_group in "${user_groups[@]}"; do
-        [[ $(check_permissions "$1/.$2" ".$user_group") == 'read' ]] && table_menu_read && return 0
-    done
-    echo "you don't have permission" && sleep 2 && return 1
 }
 
 # $1: Table Metadata File
 # $2: Table Data File
 crud_menu() {
-    [[ "$user" == 'root' || "$user" == "$owner" ]] && crud_menu_write && return 0
+    [[ "$user" == 'root' || "$user" == "$owner" ]] && crud_menu_write "$1" "$2" && return 0
+    [[ "$user" == 'guest' ]] && crud_menu_read "$1" "$2" && return 0
 
-    local user_perm=$(check_permissions "$1/.$2" "$user") && local user_groups=''
-    [[ $user_perm == 'write' ]] && crud_menu_write && return 0
-
-    mapfile -t user_groups < <(awk -F ':' -v metadata=$"$1/.$2" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata)
-    if [[ $user_perm == 'read' ]]; then
-        for user_group in "${user_groups[@]}"; do
-            [[ $(check_permissions "$1/.$2" ".$user_group") == 'write' ]] && crude_menu_write && return 0
-        done
-        crud_menu_read && return 0
+    user_perm=$(check_permissions "$1/.$2" "$user")
+    mapfile -t user_groups < <(awk -F ':' -v metadata="$1/.$2" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata)
+    group_perm_func "$1/.$2" "$user_groups"
+    gruop_perm=$?
+    if [[ "$permissions_value" == 'private' ]]; then
+        [[ $group_perm -eq 3 ]] && $group_perm=2
+        [[ "$user_perm" == 'write' || $group_perm -eq 2 ]] && crud_menu_write "$1" "$2" && return 0
+        [[ "$user_perm" == 'read' || $group_perm -eq 1 ]] && crud_menu_read "$1" "$2" && return 0
+        echo "you don't have permission" && sleep 2 && return 1
+    elif [[ "$permissions_value" == 'public' ]]; then
+        [[ $group_perm -eq 3 ]] && $group_perm=1
+        [[ "$user_perm" == 'read' || $group_perm -eq 1 ]] && echo "you don't have permission" && sleep 2 && return 1
+        [[ "$user_perm" == 'write' || $group_perm -eq 2 ]] && crud_menu_read "$1" "$2" && return 0
+        crud_menu_write "$1" "$2" && return 0
     fi
-
-    for user_group in "${user_groups[@]}"; do
-        [[ $(check_permissions "$1/.$2" ".$user_group") == 'read' ]] && crud_menu_read && return 0
-    done
-    echo "you don't have permission" && sleep 2 && return 1
 }
 
 ########################################################################################
@@ -113,6 +131,7 @@ db_menu_write() {
         4)
             clear_buffer
             read -r -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(trim_tolower "$db_name")
+            delete "$dbs_path" "$db_name" "db"
             sleep 2
             ;;
         5)
@@ -124,14 +143,7 @@ db_menu_write() {
             clear_buffer
             read -r -s -n 1 -p "Press any key to continue..."
             ;;
-        6)
-            echo "logout at $(date)" >>"$logs_path/$user"
-            mv "$logs_path/$user" "$logs_path/.$user"
-            echo "Goodbye $user!"
-            user="Guest"
-            sleep 2
-            return 0
-            ;;
+        6) return 0 ;;
         7)
             echo "logout at $(date)" >>"$logs_path/$user"
             mv "$logs_path/$user" "$logs_path/.$user"
@@ -189,14 +201,7 @@ db_menu_read() {
             clear_buffer
             read -r -s -n 1 -p "Press any key to continue..."
             ;;
-        3)
-            echo "logout at $(date)" >>"$logs_path/$user"
-            mv "$logs_path/$user" "$logs_path/.$user"
-            echo "Goodbye $user!"
-            user="Guest"
-            sleep 2
-            return 0
-            ;;
+        3) return 0 ;;
         4)
             echo "logout at $(date)" >>"$logs_path/$user"
             mv "$logs_path/$user" "$logs_path/.$user"
@@ -213,8 +218,7 @@ db_menu_read() {
     done
 }
 
-# $1: Database Path
-# $2: Table to be created
+# $1: selected Database
 table_menu_write() {
     db_path="$dbs_path/$1"
     while true; do
@@ -299,8 +303,7 @@ table_menu_write() {
     done
 }
 
-# $1: Database Path
-# $2: Table to be created
+# $1: selected Database
 table_menu_read() {
     db_path="$dbs_path/$1"
     while true; do

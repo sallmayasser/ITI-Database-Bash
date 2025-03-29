@@ -43,11 +43,9 @@ auth_path="$(dirname "$0")/.Credentials"
 
 # Initialize Logs Directory
 logs_path="$(dirname "$0")/.Logs"
-[[ ! -e "$logs_path/.root" ]] && {
-    [[ -e "$logs_path/root" ]] || {
-        mkdir -p "$logs_path"
-        echo "created at $(date)" >>"$logs_path/.root"
-    }
+[[ ! -e "$logs_path" ]] && {
+    mkdir "$logs_path"
+    echo "root created at $(date)" >>"$logs_path/.root"
 }
 
 auth_menu

@@ -73,7 +73,7 @@ key_init() {
 # $4: 'users', 'groups'
 include_exclude() {
     clear
-    echo "Type the $4 you want to $2 in $3 permission, type '/' to finish."
+    echo "Type the $4 you want to $2 in $(basename $3) permission, type '/' to finish."
     [[ $2 == 'include' ]] && [[ $3 == 'write' ]] && echo "include write permissions will automatically include read permissions"
     [[ $2 == 'exclude' ]] && [[ $3 == 'read' ]] && echo "exclude read permissions will automatically exclude write permissions"
     echo -n "$3:$4" >>"$1"
@@ -123,17 +123,17 @@ set_permissions() {
     if [[ $permission -eq 1 ]]; then
         permission="include"
         echo "permissions:private" >>"$1"
-        1st='write' && 2nd='read'
+        st='write' && nd='read'
     elif [[ $permission -eq 2 ]]; then
         permission="exclude"
         echo "permissions:public" >>"$1"
-        1st='read' && 2nd='write'
+        st='read' && nd='write'
     fi
 
-    include_exclude "$1" "$permission" "$1st" "users"
-    include_exclude "$1" "$permission" "$1nd" "groups"
-    include_exclude "$1" "$permission" "$2st" "users"
-    include_exclude "$1" "$permission" "$2nd" "groups"
+    include_exclude "$1" "$permission" "$st" "users"
+    include_exclude "$1" "$permission" "$st" "groups"
+    include_exclude "$1" "$permission" "$nd" "users"
+    include_exclude "$1" "$permission" "$nd" "groups"
     return 0
 }
 
@@ -175,7 +175,17 @@ table_init() {
         ((colNum++))
     } || sed -i "${pk}s/$/:pk/" "$1/.$2.init.$user"
 
-    set_permissions "$1/.$2.permissions.$user"
+    clear
+    echo "Do you want the new table to inherit the same permissions as the database?"
+    clear_buffer
+    read -r -n 1 -p "Press [y/Y] to inherit permissions and any other key to cancel: " inherit_perm
+    [[ $inherit_perm == [yY] ]] && {
+        rm -f "$1/.$2.permissions.$user"
+        awk '/^permissions:/ { count = 5 } count > 0 { print $0; count-- }' "$1" >"$1/.$2.permissions.$user"
+    } || {
+        set_permissions "$1/.$2.permissions.$user"
+    }
+
     clear
     echo -e "Table info:\n"
     # friendlier format
