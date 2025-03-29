@@ -6,7 +6,24 @@ clear_buffer() {
     read -r -s -t 0.1 -N 999999
 }
 
-# Function to remove leading/trailing spaces, squeeze inner spaces, and convert the string to lowercase 
+# Function to remove leading/trailing spaces, squeeze inner spaces, and convert the string to lowercase
 trim_tolower() {
     echo "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[[:space:]]\+/ /g;s/.*/\L&/'
+}
+
+# $1: Metadata File
+# $2: user or group to check
+check_permissions() {
+    awk -F':' -v tocheck="$2" '
+    /^permissions:/ { count = 4; next }
+    count > 0 {
+        for (i = 3; i <= NF; i++) {
+            if ($i == tocheck) {
+                print $1
+                exit 0
+            }
+        }
+        count--
+    }
+    END { exit (count == 4 ? 0 : 1) }' "$1"
 }

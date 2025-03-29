@@ -4,6 +4,13 @@
 # helper functions:
 ###################
 
+logout_func() {
+    echo "logout at $(date)" >>"$logs_path/$user"
+    mv "$logs_path/$user" "$logs_path/.$user"
+    echo "Goodbye $user!"
+    user="Guest"
+}
+
 # $1: 'user': user, 'group': group
 login_func() {
     clear
@@ -34,8 +41,13 @@ login_func() {
 
     if [[ $1 == 'user' ]]; then
         user="$name"
-        user_menu
-        return 0
+        if [[ -e "$logs_path/.$user" ]]; then
+            mv "$logs_path/.$user" "$logs_path/$user"
+            echo "login at $(date)" >>"$logs_path/$user"
+            [[ $user == 'root' ]] && root_menu || user_menu
+            return 0
+        fi
+        echo -e "\nuser is already logged in" && return 1
     elif [[ $1 == 'group' ]]; then
         members_md=$(awk '/^members/ {print NR}' "$auth_path/$name")
         sed -i "${members_md}s/$/:$user/" "$auth_path/$name"
@@ -47,6 +59,7 @@ login_func() {
         updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/$user")
         [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/$user" || echo "updated_at:$(date)" >>"$auth_path/$user"
 
+        echo -e "\nYou have successfully joined the group '$name'."
         return 0
     fi
 }
@@ -61,12 +74,8 @@ register_func() {
         echo -e "\nName cannot be whitespace."
         return 1
     }
-    [[ "$name" == 'guest' ]] && {
-        echo -e "\nName cannot be 'Guest'."
-        return 1
-    }
-    [[ "$name" == 'root' ]] && {
-        echo -e "\nName cannot be 'root'."
+    [[ "$name" == 'guest' || "$name" == 'root' ]] && {
+        echo -e "\nName cannot be '$name'."
         return 1
     }
     ! is_str "$name" && {
@@ -101,13 +110,14 @@ register_func() {
         echo "pass:$pass1" >>"$auth_path/$name"
         echo "groups" >>"$auth_path/$name"
         echo "created_at:$(date)" >>"$auth_path/$name"
+        echo "user '$name' created at $(date)" >>"$logs_path/.$name"
     elif [[ $1 == 'group' ]]; then
         echo "groupname:$name" >>"$auth_path/.$name"
         echo "pass:$pass1" >>"$auth_path/.$name"
         echo "owner:$user" >>"$auth_path/.$name"
         echo "members:$user" >>"$auth_path/.$name"
         echo "created_by:$user" >>"$auth_path/.$name"
-        echo "created_at:$(date)" >>"$auth_path/.$name"
+        echo "created group '$name' at $(date)" >>"$logs_path/.$name"
 
         groups_md=$(awk '/^groups/ {print NR}' "$auth_path/$user")
         sed -i "${groups_md}s/$/:$name/" "$auth_path/$user"
@@ -122,6 +132,11 @@ register_func() {
 ########################################################################################
 
 mygroups() {
+    clear
+    echo -e "A menu where you can edit and remove your groups\n"
+    awk -F ':' -v metadata="$auth_path/$user" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata
+    clear_buffer
+    read -r -s -n 1 -p "Press any key to continue..."
     return 0
 }
 
@@ -140,7 +155,6 @@ group_menu() {
 
         case "$choice" in
         1)
-            clear_buffer
             register_func "group"
             sleep 2
             ;;
@@ -148,7 +162,6 @@ group_menu() {
             mygroups
             ;;
         3)
-            clear_buffer
             login_func "group"
             sleep 2
             ;;
@@ -167,24 +180,35 @@ user_menu() {
         echo "Welcome $user"
         echo "1) DBMS"
         echo "2) Groups"
-        echo "3) Logout"
-        echo "4) Exit"
+        echo "3) Logs"
+        echo "4) Logout"
+        echo "5) Exit"
 
         clear_buffer
         read -r -s -n 1 choice
         clear
 
         case "$choice" in
-        1) db_menu ;;
+        1)
+            db_menu
+            logout_func
+            return 0
+            ;;
         2)
             group_menu
             ;;
         3)
-            echo "Goodbye $user!"
-            user="Guest"
-            return 1
+            echo -e "Logs:\n####\n"
+            cat "$logs_path/$user"
+            echo
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
             ;;
         4)
+            logout_func
+            return 0
+            ;;
+        5)
             echo "Goodbye $user!"
             sleep 2
             exit 0
@@ -194,18 +218,17 @@ user_menu() {
             sleep 2
             ;;
         esac
-
     done
 }
 
-auth_menu() {
+root_menu() {
     while true; do
         clear
-        echo "Welcome:"
-        echo "1) Login"
-        echo "2) Register"
-        echo "3) Enter as a guest"
-        echo "4) Enter as root"
+        echo "Welcome root"
+        echo "1) DBMS"
+        echo "2) Groups"
+        echo "3) Logs"
+        echo "4) Logout"
         echo "5) Exit"
 
         clear_buffer
@@ -214,22 +237,68 @@ auth_menu() {
 
         case "$choice" in
         1)
+            db_menu
+            logout_func
+            return 0
+            ;;
+        2)
+            for group in "$auth_path"/.*; do
+                [ -f "$group" ] && echo "$group"
+            done
+            echo
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        3)
+            echo -e "Logs:\n####\n"
+            for logs in "$logs_path"/* "$logs_path"/.*; do
+                [ -f "$logs" ] && cat "$logs_path/$logs" && echo
+            done
+            clear_buffer
+            read -r -s -n 1 -p "Press any key to continue..."
+            ;;
+        4)
+            logout_func
+            return 0
+            ;;
+        5)
+            echo "Goodbye root!"
+            sleep 2
+            exit 0
+            ;;
+        *)
+            echo "Invalid choice, please try again."
+            sleep 2
+            ;;
+        esac
+    done
+}
+
+auth_menu() {
+    user='Guest'
+    while true; do
+        clear
+        echo "Welcome:"
+        echo "1) Login"
+        echo "2) Register"
+        echo "3) Enter as a guest"
+        echo "4) Exit"
+
+        clear_buffer
+        read -r -s -n 1 choice
+        clear
+
+        case "$choice" in
+        1)
             login_func "user"
-            [[ $? -eq 1 ]] && sleep 2
+            sleep 2
             ;;
         2)
             register_func "user"
             sleep 2
             ;;
-        3) user='Guest' && db_menu ;;
+        3) db_menu ;;
         4)
-            clear
-            clear_buffer
-            read -r -s -p "Please enter root password: " pass
-            [[ "$pass" != 'root' ]] && echo -e "\nInvalid password" && sleep 2 && continue
-            user='root' && db_menu
-            ;;
-        5)
             echo "Goodbye!"
             sleep 2
             exit 0
@@ -239,6 +308,5 @@ auth_menu() {
             sleep 2
             ;;
         esac
-
     done
 }

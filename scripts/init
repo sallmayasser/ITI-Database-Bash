@@ -1,0 +1,249 @@
+#!/bin/bash
+########################################################################################
+
+# helper functions:
+###################
+
+# $1: Metadata init file
+# $2: unique, notnull
+restriction() {
+    clear
+    awk -F ":" '{print $2}' "$1" | nl -w 1 -s ") "
+    counter="$colNum"
+    while [[ $counter -gt 0 ]]; do
+        echo
+        clear_buffer
+        read -r -p "Enter the column number for the $2 key, or 0 to finish: " key
+
+        if is_int "$key"; then
+            [[ $key -eq 0 ]] && break
+            if [[ $key -gt 0 ]] && [[ $key -le $colNum ]]; then
+                if [[ $key -eq $pk ]]; then
+                    echo "'$pk_name' is already $2 as it is the primary key."
+                elif $(awk -v key="$key" -v condition="$2" -F ":" 'NR==key {if ($4==condition || $5==condition) exit 0; exit 1}' "$1"); then
+                    key_name=$(awk -v key="$key" -F ":" 'NR==key {print $2}' "$1")
+                    echo "'$key_name' is already $2."
+                else
+                    sed -i "${key}s/$/:$2/" "$1"
+                    ((counter--))
+                fi
+                continue
+            fi
+        fi
+        echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 to finish."
+    done
+}
+
+# $1: Metadata init file
+key_init() {
+    rm -f "$1"
+    for ((i = 0; i < $colNum; i++)); do
+        line="key"
+        echo
+
+        clear_buffer
+        read -r -p "Please enter column $(($i + 1)) Name: " colName && colName=$(trim_tolower "$colName")
+        [[ -z "$colName" ]] && {
+            echo "Column name cannot be whitespace"
+            ((i--))
+            continue
+        }
+        line+=":$colName"
+
+        clear_buffer
+        read -r -p "Please enter column $(($i + 1)) Data Type (int/str/email/phone): " colType && colType=$(trim_tolower "$colType")
+        [[ -z "$colType" ]] && {
+            echo "Data Type cannot be whitespace"
+            ((i--))
+            continue
+        }
+        is_type "$colType" && line+=":$colType" || {
+            echo "Data Type must be 'int' or 'str'"
+            ((i--))
+            continue
+        }
+
+        echo "$line" >>"$1"
+    done
+}
+
+# $1: Metadata permission File
+# $2: 'include', 'exclude'
+# $3: 'read', 'write'
+# $4: 'users', 'groups'
+include_exclude() {
+    clear
+    echo "Type the $4 you want to $2 in $(basename $3) permission, type '/' to finish."
+    [[ $2 == 'include' ]] && [[ $3 == 'write' ]] && echo "include write permissions will automatically include read permissions"
+    [[ $2 == 'exclude' ]] && [[ $3 == 'read' ]] && echo "exclude read permissions will automatically exclude write permissions"
+    echo -n "$3:$4" >>"$1"
+    while true; do
+        echo
+        clear_buffer
+        read -r -p "${4%s} to be ${2}d: " name
+        [[ $name == '/' ]] && break
+        [[ -z "$name" ]] && {
+            echo "${4%s} name cannot be whitespace"
+            continue
+        }
+        is_str "$name" || {
+            echo "Invalid ${4%s} name. The name must start with a letter and cannot contain ':' or '/'."
+            continue
+        }
+        [[ "$4" == 'groups' ]] && name=".$name"
+        [[ -e "$auth_path/$name" ]] || {
+            echo "${4%s} does not exist"
+            continue
+        }
+        if check_permissions "$1" "$name"; then
+            echo "permission already exists."
+            continue
+        else
+            echo "permission added succesfully."
+            echo -n ":$name" >>"$1"
+        fi
+    done
+    echo >>"$1"
+}
+
+# $1: Metadata permission File
+set_permissions() {
+    clear
+    rm -f $1
+    echo "Permission Levels?"
+    echo "1) Private"
+    echo "2) Public"
+    while true; do
+        echo
+        clear_buffer
+        read -r -n 1 -p "Please select the permission level: " permission
+        is_int "$permission" && [[ $permission -ge 1 ]] && [[ $permission -le 2 ]] && break
+        echo -e "\nInvalid input. Please enter a valid number between 1 and 2."
+    done
+    if [[ $permission -eq 1 ]]; then
+        permission="include"
+        echo "permissions:private" >>"$1"
+        st='write' && nd='read'
+    elif [[ $permission -eq 2 ]]; then
+        permission="exclude"
+        echo "permissions:public" >>"$1"
+        st='read' && nd='write'
+    fi
+
+    include_exclude "$1" "$permission" "$st" "users"
+    include_exclude "$1" "$permission" "$st" "groups"
+    include_exclude "$1" "$permission" "$nd" "users"
+    include_exclude "$1" "$permission" "$nd" "groups"
+    return 0
+}
+
+########################################################################################
+
+# $1: Database Path
+# $2: Table to be created
+table_init() {
+    clear
+    while true; do
+        clear_buffer
+        read -r -p "Please enter number of columns: " colNum
+        [[ -z "$colNum" ]] && {
+            echo -e "Number of columns cannot be whitespace\n"
+            continue
+        }
+        is_int "$colNum" && [[ $colNum -gt 0 ]] && break
+        echo -e "Number of columns must be a positive integer\n"
+    done
+
+    key_init "$1/.$2.init.$user"
+    clear
+    awk -F ":" '{print $2}' "$1/.$2.init.$user" | nl -w 1 -s ") "
+    while true; do
+        echo
+        clear_buffer
+        read -r -p "Enter the column number for the primary key, or 0 for auto-generated ID: " pk
+        is_int "$pk" && [[ $key -ge 0 ]] && [[ $key -le $colNum ]] && break
+        echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 for auto-generated ID."
+    done
+
+    [[ $pk -eq 0 ]] && pk_name="ID" || pk_name=$(awk -v pk="$pk" -F ":" 'NR==pk {print $2}' "$1/.$2.init.$user")
+    if [[ $colNum -ne 1 ]] || [[ $pk -eq 0 ]]; then
+        restriction "$1/.$2.init.$user" "unique"
+        restriction "$1/.$2.init.$user" "notnull"
+    fi
+    [[ $pk -eq 0 ]] && {
+        sed -i "1s/^/key:ID:auto\n/" "$1/.$2.init.$user"
+        ((colNum++))
+    } || sed -i "${pk}s/$/:pk/" "$1/.$2.init.$user"
+
+    clear
+    echo "Do you want the new table to inherit the same permissions as the database?"
+    clear_buffer
+    read -r -n 1 -p "Press [y/Y] to inherit permissions and any other key to cancel: " inherit_perm
+    [[ $inherit_perm == [yY] ]] && {
+        rm -f "$1/.$2.permissions.$user"
+        awk '/^permissions:/ { count = 5 } count > 0 { print $0; count-- }' "$1" >"$1/.$2.permissions.$user"
+    } || {
+        set_permissions "$1/.$2.permissions.$user"
+    }
+
+    clear
+    echo -e "Table info:\n"
+    # friendlier format
+    cat "$1/.$2.init.$user"
+    echo
+    # friendlier format
+    cat "$1/.$2.permissions.$user"
+    echo
+    clear_buffer
+    read -r -n 1 -p "Press [y/Y] to confirm Initialization and any other key to cancel: " confirm
+    [[ $confirm != [yY] ]] && {
+        echo -e "\nInitialization canceled"
+        sleep 2
+        return 1
+    }
+
+    echo "updated_at:$(date)" >>"$1/.$2"
+    echo "columns:$colNum" >>"$1/.$2"
+    echo "rows:0" >>"$1/.$2"
+    echo "pk:$pk_name:$pk" >>"$1/.$2"
+    cat "$1/.$2.init.$user" >>"$1/.$2"
+    rm -f "$1/.$2.init.$user"
+
+    sed -i "${permissions_md}r $1/.$2.permissions.$user" "$1/.$2"
+    sed -i "${permissions_md}d" "$1/.$2"
+    rm -f "$1/.$2.permissions.$user"
+
+    get_headers "$1/.$2" >"$table_file"
+    echo "initialized Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/$user"
+
+    echo -e "\nTable Initialized succussfully"
+    sleep 2
+    crud_menu "$1/.$2" "$1/$2"
+}
+
+# $1: Database to be created
+db_init() {
+    set_permissions "$dbs_path/.$1.permissions.$user"
+    clear
+    echo -e "Database info:\n"
+    # friendlier format
+    cat "$dbs_path/.$1.permissions.$user"
+    echo
+    clear_buffer
+    read -r -n 1 -p "Press [y/Y] to confirm Initialization and any other key to cancel: " confirm
+    [[ $confirm != [yY] ]] && {
+        echo -e "\nInitialization canceled"
+        sleep 2
+        return 1
+    }
+
+    echo "updated_at:$(date)" >>"$dbs_path/.$1"
+    sed -i "${permissions_md}r $dbs_path/.$1.permissions.$user" "$dbs_path/.$1"
+    sed -i "${permissions_md}d" "$dbs_path/.$1"
+    rm -f "$dbs_path/.$1.permissions.$user"
+    echo "initialized Database '$1' at $(date)" >>"$logs_path/$user"
+
+    echo "Database '$1' initialized successfully"
+    sleep 2
+    return 0
+}

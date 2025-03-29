@@ -6,3 +6,6 @@ test
 
 # Credentials Directory
 .Credentials
+
+# Logs Directory
+.Logs
