@@ -151,7 +151,7 @@ select_() {
             sleep 2
             return 1
         }
-        [[ -d "$1/$2" ]] && db_init "$2"
-        [[ -f "$1/$2" ]] && table_init "$1" "$2"
+        [[ -d "$1/$2" ]] && db_init "$2" && table_menu "$2"
+        [[ -f "$1/$2" ]] && table_init "$1" "$2" && crud_menu "$1/.$2" "$1/$2"
     fi
 }
