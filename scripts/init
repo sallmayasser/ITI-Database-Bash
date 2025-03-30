@@ -230,7 +230,7 @@ table_init() {
 
     echo -e "\nTable Initialized succussfully"
     sleep 2
-    crud_menu "$1/.$2" "$1/$2"
+    return 0
 }
 
 # $1: Database to be created
