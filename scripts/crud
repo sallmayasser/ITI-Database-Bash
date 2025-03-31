@@ -100,7 +100,7 @@ validate_input() {
             case "$type" in
             "str")
                 if ! is_str "$value"; then
-                    echo "Error: '$field' must start with letter."
+                    echo "Error: '$field' must start with letter and cannot contain ':' or '/'."
                     continue
                 fi
                 ;;
@@ -163,7 +163,7 @@ insert_record() {
     for attr in "${attributes[@]}"; do
         type="${field[$attr]}"
         constraints="${rules[$attr]}"
-        [[ "$constraints" =~ notnull ]] && msg="Enter $attr value (cannot be empty): " || msg="Enter $attr value (press enter for empty value): "
+        [[ "$constraints" =~ notnull ]] && msg="Enter $attr value [$type] (cannot be empty): " || msg="Enter $attr value [$type] (press enter for empty value): "
         validate_input "$attr" "$type" "$constraints" "$msg"
         new_row+="$reply:"
     done
@@ -254,14 +254,13 @@ update_record() {
         return 1
     }
 
-    local field_type=$(awk -F ":" -v key="$key" '$2 == key {print $3}' "$meta_file")
-    local field_constraints=$(awk -F ":" -v key="$key" '$2 == key {print $4}' "$meta_file")
+    local field_type=$(awk -F ":" -v key="$key" '$2 == key {print $3}' "$meta_file") && field_type=$(echo "$field_type" | tr -d '\n')
+    local field_constraints=$(awk -F ":" -v key="$key" '$2 == key {print $4}' "$meta_file") && field_constraints=$(echo "$field_constraints" | tr -d '\n')
 
-    [[ $constraints =~ notnull ]] && msg="Enter $attr value (cannot be empty): " || msg="Enter $attr value (press enter for empty value): "
+    [[ $constraints =~ notnull ]] && msg="Enter $attr value [$field_type] (cannot be empty): " || msg="Enter $attr value [$field_type] (press enter for empty value): "
 
     validate_input "$key" "$field_type" "$field_constraints" "$msg"
-    [[ $? -eq 0 ]] &&
-        new_value="$reply"
+    [[ $? -eq 0 ]] && new_value="$reply"
 
     clear_buffer
     read -r -n 1 -p "Are you sure you want to update $matching_count record(s)? (y/Y) " confirmation

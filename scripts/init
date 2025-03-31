@@ -63,14 +63,14 @@ key_init() {
         line+=":$colName"
 
         clear_buffer
-        read -r -p "Please enter column $(($i + 1)) Data Type (int/str/email/phone): " colType && colType=$(trim_tolower "$colType")
+        read -r -p "Please enter column $(($i + 1)) Data Type (${validDataTypes[*]}): " colType && colType=$(trim_tolower "$colType")
         [[ -z "$colType" ]] && {
             echo "Data Type cannot be whitespace"
             ((i--))
             continue
         }
         is_type "$colType" && line+=":$colType" || {
-            echo "Data Type must be 'int' or 'str'"
+            echo "Data Type must be (${validDataTypes[*]})"
             ((i--))
             continue
         }
