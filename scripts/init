@@ -10,6 +10,7 @@ restriction() {
     clear
     awk -F ":" '{print $2}' "$1" | nl -w 1 -s ") "
     counter="$colNum"
+    [[ $pk -ne 0 ]] && ((counter--))
     while [[ $counter -gt 0 ]]; do
         echo
         clear_buffer
@@ -37,6 +38,7 @@ restriction() {
 # $1: Metadata init file
 key_init() {
     rm -f "$1"
+    touch "$1"
     for ((i = 0; i < $colNum; i++)); do
         line="key"
         echo
@@ -48,17 +50,27 @@ key_init() {
             ((i--))
             continue
         }
+        is_str "$colName" || {
+            echo "Invalid column name. The name must start with a letter and cannot contain ':' or '/'."
+            ((i--))
+            continue
+        }
+        [[ -n $(awk -F ':' -v colname="$colName" '$2 == colname' "$1") ]] && {
+            echo "Column name already exists"
+            ((i--))
+            continue
+        }
         line+=":$colName"
 
         clear_buffer
-        read -r -p "Please enter column $(($i + 1)) Data Type (int/str/email/phone): " colType && colType=$(trim_tolower "$colType")
+        read -r -p "Please enter column $(($i + 1)) Data Type (${validDataTypes[*]}): " colType && colType=$(trim_tolower "$colType")
         [[ -z "$colType" ]] && {
             echo "Data Type cannot be whitespace"
             ((i--))
             continue
         }
         is_type "$colType" && line+=":$colType" || {
-            echo "Data Type must be 'int' or 'str'"
+            echo "Data Type must be (${validDataTypes[*]})"
             ((i--))
             continue
         }
@@ -161,7 +173,7 @@ table_init() {
         echo
         clear_buffer
         read -r -p "Enter the column number for the primary key, or 0 for auto-generated ID: " pk
-        is_int "$pk" && [[ $key -ge 0 ]] && [[ $key -le $colNum ]] && break
+        is_int "$pk" && [[ $pk -ge 0 ]] && [[ $pk -le $colNum ]] && break
         echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 for auto-generated ID."
     done
 
@@ -181,7 +193,7 @@ table_init() {
     read -r -n 1 -p "Press [y/Y] to inherit permissions and any other key to cancel: " inherit_perm
     [[ $inherit_perm == [yY] ]] && {
         rm -f "$1/.$2.permissions.$user"
-        awk '/^permissions:/ { count = 5 } count > 0 { print $0; count-- }' "$1" >"$1/.$2.permissions.$user"
+        awk '/^permissions:/ { count = 5 } count > 0 { print $0; count-- }' "$dbs_path/.$(basename $1)" >"$1/.$2.permissions.$user"
     } || {
         set_permissions "$1/.$2.permissions.$user"
     }
@@ -213,12 +225,12 @@ table_init() {
     sed -i "${permissions_md}d" "$1/.$2"
     rm -f "$1/.$2.permissions.$user"
 
-    get_headers "$1/.$2" >"$table_file"
+    get_headers "$1/.$2" >"$1/$2"
     echo "initialized Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/$user"
 
     echo -e "\nTable Initialized succussfully"
     sleep 2
-    crud_menu "$1/.$2" "$1/$2"
+    return 0
 }
 
 # $1: Database to be created
@@ -243,7 +255,7 @@ db_init() {
     rm -f "$dbs_path/.$1.permissions.$user"
     echo "initialized Database '$1' at $(date)" >>"$logs_path/$user"
 
-    echo "Database '$1' initialized successfully"
+    echo -e "\nDatabase '$1' initialized successfully"
     sleep 2
     return 0
 }

@@ -145,10 +145,7 @@ db_menu_write() {
             ;;
         6) return 0 ;;
         7)
-            echo "logout at $(date)" >>"$logs_path/$user"
-            mv "$logs_path/$user" "$logs_path/.$user"
-            echo "Goodbye $user!"
-            user="Guest"
+            logout_func
             sleep 2
             exit 0
             ;;
@@ -203,10 +200,7 @@ db_menu_read() {
             ;;
         3) return 0 ;;
         4)
-            echo "logout at $(date)" >>"$logs_path/$user"
-            mv "$logs_path/$user" "$logs_path/.$user"
-            echo "Goodbye $user!"
-            user="Guest"
+            logout_func
             sleep 2
             exit 0
             ;;
