@@ -27,3 +27,9 @@ check_permissions() {
     }
     END { exit (count == 4 ? 0 : 1) }' "$1"
 }
+
+# Function to hash the password with a salt using SHA-256
+hash_password() {
+    local password="$1" && local salt="$2"
+    echo -n "$password$salt" | openssl dgst -sha256
+}

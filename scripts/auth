@@ -34,7 +34,18 @@ login_func() {
 
     clear_buffer
     read -r -s -p "Please enter your $1 password: " pass
-    if [[ ! -e "$auth_path/$name" || -z "$pass" || "$pass" != "$(awk -F ':' 'NR==2 {print $2}' "$auth_path/$name")" ]]; then
+
+    if [[ ! -e "$auth_path/$name" || -z "$pass" ]]; then
+        echo -e "\nInvalid $1 name or password."
+        return 1
+    fi
+
+    local user_data=$(grep "^pass:" "$auth_path/$name")
+    local stored_salt=$(echo "$user_data" | cut -d ':' -f2)
+    local stored_hash=$(echo "$user_data" | cut -d ':' -f3)
+    local entered_hash=$(hash_password "$pass" "$stored_salt")
+
+    if [[ ! -e "$auth_path/$name" || "$entered_hash" != "$stored_hash" ]]; then
         echo -e "\nInvalid $1 name or password."
         return 1
     fi
@@ -104,16 +115,19 @@ register_func() {
 
     [[ $pass1 != $pass2 ]] && echo -e "\nPasswords does not match. Registration Failed." && return 1
 
+    local salt=$(openssl rand -base64 16)
+    local hashed_password=$(hash_password "$pass1" "$salt")
+
     echo -e "\nRegistration Complete."
     if [[ $1 == 'user' ]]; then
         echo "username:$name" >>"$auth_path/$name"
-        echo "pass:$pass1" >>"$auth_path/$name"
+        echo "pass:$salt:$hashed_password" >>"$auth_path/$name"
         echo "groups" >>"$auth_path/$name"
         echo "created_at:$(date)" >>"$auth_path/$name"
         echo "user '$name' created at $(date)" >>"$logs_path/.$name"
     elif [[ $1 == 'group' ]]; then
         echo "groupname:$name" >>"$auth_path/.$name"
-        echo "pass:$pass1" >>"$auth_path/.$name"
+        echo "pass:$salt:$hashed_password" >>"$auth_path/.$name"
         echo "owner:$user" >>"$auth_path/.$name"
         echo "members:$user" >>"$auth_path/.$name"
         echo "created_by:$user" >>"$auth_path/.$name"
