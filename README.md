@@ -6,7 +6,7 @@ The final submission for this project was made before the deadline. To easily ac
 
 1. Clone or pull the latest version of the repository:
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/AdhamBasheir/ITI-Database-Bash
     ```
 
 2. Switch to the commit tagged as `submission-deadline` to see the version of the project submitted before the deadline:

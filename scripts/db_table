@@ -36,7 +36,8 @@ create() {
     }
 
     if [[ $3 == 'db' ]]; then
-        mkdir "$1/$2"
+        mkdir "$dbs_path/$2"
+        mkdir "$temp_path/$2"
         echo "db_name:$2" >>"$1/.$2"
         echo "created Database '$2' at $(date)" >>"$logs_path/$user"
         echo "owner:$user" >>"$1/.$2"
@@ -95,7 +96,7 @@ delete() {
 
     rm -r "$1/$2"
     rm "$1/.$2"
-    [[ $3 == 'db' ]] && echo "deleted Database '$2' at $(date)" >>"$logs_path/$user"
+    [[ $3 == 'db' ]] && rm -r "$temp_path/$2" && echo "deleted Database '$2' at $(date)" >>"$logs_path/$user"
     [[ $3 == 'table' ]] && echo "deleted Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/$user"
 
     echo "'$2' is deleted successfully."

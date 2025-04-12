@@ -9,3 +9,6 @@ test
 
 # Logs Directory
 .Logs
+
+# temp metadata Directory
+.temp

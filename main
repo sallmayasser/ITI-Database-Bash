@@ -43,6 +43,8 @@ auth_path="$(dirname "$0")/.Credentials"
     echo "username:root" >>"$auth_path/root"
     echo "pass:$root_salt:$root_hashed_password" >>"$auth_path/root"
     echo "created_at:$(date)" >>"$auth_path/root"
+
+    unset root_salt root_hashed_password pass1 pass2
 }
 
 # Initialize Logs Directory
@@ -51,5 +53,9 @@ logs_path="$(dirname "$0")/.Logs"
     mkdir "$logs_path"
     echo "root created at $(date)" >>"$logs_path/.root"
 }
+
+# Initialize temp metadata Directory
+temp_path="$(dirname "$0")/.temp"
+[[ ! -e "$temp_path" ]] && mkdir "$temp_path"
 
 auth_menu

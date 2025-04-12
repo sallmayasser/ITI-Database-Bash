@@ -31,5 +31,5 @@ check_permissions() {
 # Function to hash the password with a salt using SHA-256
 hash_password() {
     local password="$1" && local salt="$2"
-    echo -n "$password$salt" | openssl dgst -sha256
+    echo -n "$password$salt" | openssl dgst -sha256 | awk '{print $2}'
 }

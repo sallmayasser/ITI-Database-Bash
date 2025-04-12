@@ -50,6 +50,7 @@ login_func() {
         return 1
     fi
 
+    unset pass
     if [[ $1 == 'user' ]]; then
         user="$name"
         if [[ -e "$logs_path/.$user" ]]; then
@@ -140,6 +141,8 @@ register_func() {
         [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/$user"
         [[ -z $updated_at_md ]] && echo "updated_at:$(date)" >>"$auth_path/$user"
     fi
+
+    unset pass1 pass2
     return 0
 }
 

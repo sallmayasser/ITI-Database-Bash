@@ -108,7 +108,7 @@ include_exclude() {
             continue
         }
         if check_permissions "$1" "$name"; then
-            echo "permission already exists."
+            echo "\rpermission already exists."
             continue
         else
             echo "permission added succesfully."
@@ -166,9 +166,9 @@ table_init() {
         echo -e "Number of columns must be a positive integer\n"
     done
 
-    key_init "$1/.$2.init.$user"
+    key_init "$temp_path/$(basename "$1")/$2.init.$user"
     clear
-    awk -F ":" '{print $2}' "$1/.$2.init.$user" | nl -w 1 -s ") "
+    awk -F ":" '{print $2}' "$temp_path/$(basename "$1")/$2.init.$user" | nl -w 1 -s ") "
     while true; do
         echo
         clear_buffer
@@ -177,34 +177,34 @@ table_init() {
         echo "Invalid input. Please enter a valid column number between 1 and $colNum, or 0 for auto-generated ID."
     done
 
-    [[ $pk -eq 0 ]] && pk_name="ID" || pk_name=$(awk -v pk="$pk" -F ":" 'NR==pk {print $2}' "$1/.$2.init.$user")
+    [[ $pk -eq 0 ]] && pk_name="ID" || pk_name=$(awk -v pk="$pk" -F ":" 'NR==pk {print $2}' "$temp_path/$(basename "$1")/$2.init.$user")
     if [[ $colNum -ne 1 ]] || [[ $pk -eq 0 ]]; then
-        restriction "$1/.$2.init.$user" "unique"
-        restriction "$1/.$2.init.$user" "notnull"
+        restriction "$temp_path/$(basename "$1")/$2.init.$user" "unique"
+        restriction "$temp_path/$(basename "$1")/$2.init.$user" "notnull"
     fi
     [[ $pk -eq 0 ]] && {
-        sed -i "1s/^/key:ID:auto\n/" "$1/.$2.init.$user"
+        sed -i "1s/^/key:ID:auto\n/" "$temp_path/$(basename "$1")/$2.init.$user"
         ((colNum++))
-    } || sed -i "${pk}s/$/:pk/" "$1/.$2.init.$user"
+    } || sed -i "${pk}s/$/:pk/" "$temp_path/$(basename "$1")/$2.init.$user"
 
     clear
     echo "Do you want the new table to inherit the same permissions as the database?"
     clear_buffer
     read -r -n 1 -p "Press [y/Y] to inherit permissions and any other key to cancel: " inherit_perm
     [[ $inherit_perm == [yY] ]] && {
-        rm -f "$1/.$2.permissions.$user"
-        awk '/^permissions:/ { count = 5 } count > 0 { print $0; count-- }' "$dbs_path/.$(basename $1)" >"$1/.$2.permissions.$user"
+        rm -f "$temp_path/$(basename "$1")/$2.permissions.$user"
+        awk '/^permissions:/ { count = 5 } count > 0 { print $0; count-- }' "$dbs_path/.$(basename $1)" >"$temp_path/$(basename "$1")/$2.permissions.$user"
     } || {
-        set_permissions "$1/.$2.permissions.$user"
+        set_permissions "$temp_path/$(basename "$1")/$2.permissions.$user"
     }
 
     clear
     echo -e "Table info:\n"
     # friendlier format
-    cat "$1/.$2.init.$user"
+    cat "$temp_path/$(basename "$1")/$2.init.$user"
     echo
     # friendlier format
-    cat "$1/.$2.permissions.$user"
+    cat "$temp_path/$(basename "$1")/$2.permissions.$user"
     echo
     clear_buffer
     read -r -n 1 -p "Press [y/Y] to confirm Initialization and any other key to cancel: " confirm
@@ -218,12 +218,12 @@ table_init() {
     echo "columns:$colNum" >>"$1/.$2"
     echo "rows:0" >>"$1/.$2"
     echo "pk:$pk_name:$pk" >>"$1/.$2"
-    cat "$1/.$2.init.$user" >>"$1/.$2"
-    rm -f "$1/.$2.init.$user"
+    cat "$temp_path/$(basename "$1")/$2.init.$user" >>"$1/.$2"
+    rm -f "$temp_path/$(basename "$1")/$2.init.$user"
 
-    sed -i "${permissions_md}r $1/.$2.permissions.$user" "$1/.$2"
+    sed -i "${permissions_md}r $temp_path/$(basename "$1")/$2.permissions.$user" "$1/.$2"
     sed -i "${permissions_md}d" "$1/.$2"
-    rm -f "$1/.$2.permissions.$user"
+    rm -f "$temp_path/$(basename "$1")/$2.permissions.$user"
 
     get_headers "$1/.$2" >"$1/$2"
     echo "initialized Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/$user"
@@ -235,11 +235,11 @@ table_init() {
 
 # $1: Database to be created
 db_init() {
-    set_permissions "$dbs_path/.$1.permissions.$user"
+    set_permissions "$temp_path/$1.permissions.$user"
     clear
     echo -e "Database info:\n"
     # friendlier format
-    cat "$dbs_path/.$1.permissions.$user"
+    cat "$temp_path/$1.permissions.$user"
     echo
     clear_buffer
     read -r -n 1 -p "Press [y/Y] to confirm Initialization and any other key to cancel: " confirm
@@ -250,9 +250,9 @@ db_init() {
     }
 
     echo "updated_at:$(date)" >>"$dbs_path/.$1"
-    sed -i "${permissions_md}r $dbs_path/.$1.permissions.$user" "$dbs_path/.$1"
+    sed -i "${permissions_md}r $temp_path/$1.permissions.$user" "$dbs_path/.$1"
     sed -i "${permissions_md}d" "$dbs_path/.$1"
-    rm -f "$dbs_path/.$1.permissions.$user"
+    rm -f "$temp_path/$1.permissions.$user"
     echo "initialized Database '$1' at $(date)" >>"$logs_path/$user"
 
     echo -e "\nDatabase '$1' initialized successfully"
