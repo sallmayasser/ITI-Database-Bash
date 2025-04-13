@@ -52,9 +52,9 @@ crud_menu() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] && crud_menu_write "$1" "$2" && return 0
     [[ "$user" == 'guest' ]] && crud_menu_read "$1" "$2" && return 0
 
-    user_perm=$(check_permissions "$1/.$2" "$user")
-    mapfile -t user_groups < <(awk -F ':' -v metadata="$1/.$2" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata)
-    group_perm_func "$1/.$2" "$user_groups"
+    user_perm=$(check_permissions "$1" "$user")
+    mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$1")
+    group_perm_func "$1" "$user_groups"
     gruop_perm=$?
     if [[ "$permissions_value" == 'private' ]]; then
         [[ $group_perm -eq 3 ]] && $group_perm=2
