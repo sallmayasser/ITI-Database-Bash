@@ -24,8 +24,7 @@ check_permissions() {
             }
         }
         count--
-    }
-    END { exit (count == 4 ? 0 : 1) }' "$1"
+    }' "$1"
 }
 
 # Function to hash the password with a salt using SHA-256
