@@ -116,7 +116,7 @@ include_exclude() {
             continue
         }
         [[ "$4" == 'groups' ]] && name=".$name"
-        [[ -e "$auth_path/$name" ]] || {
+        [[ -e "$auth_path/$4/$name" ]] || {
             echo "${4%s} does not exist"
             continue
         }
@@ -240,7 +240,8 @@ table_init() {
     rm -f "$temp_path/$(basename "$1")/$2.permissions.$user"
 
     get_headers "$1/.$2" >"$1/$2"
-    echo "initialized Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/$user"
+    echo "user '$user' initialized Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/users/$user"
+    echo "user '$user' initialized Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/tables/$(basename "$1").$2"
 
     echo -e "\nTable Initialized succussfully"
     sleep 2
@@ -268,7 +269,8 @@ db_init() {
     sed -i "${permissions_md}r $temp_path/$1.permissions.$user" "$dbs_path/.$1"
     sed -i "${permissions_md}d" "$dbs_path/.$1"
     rm -f "$temp_path/$1.permissions.$user"
-    echo "initialized Database '$1' at $(date)" >>"$logs_path/$user"
+    echo "user '$user' initialized Database '$1' at $(date)" >>"$logs_path/users/$user"
+    echo "user '$user' initialized Database '$1' at $(date)" >>"$logs_path/dbs/$1"
 
     echo -e "\nDatabase '$1' initialized successfully"
     sleep 2

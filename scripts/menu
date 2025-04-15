@@ -217,7 +217,7 @@ table_menu_write() {
     db_path="$dbs_path/$1"
     while true; do
         clear
-        echo "Select what you want to do in Database '"$1"':"
+        echo "Hello $user, Select what you want to do in Database '"$1"':"
         echo "1) Create Table."
         echo "2) Select Table."
         echo "3) Rename Table."
@@ -302,7 +302,7 @@ table_menu_read() {
     db_path="$dbs_path/$1"
     while true; do
         clear
-        echo "Select what you want to do in Database '"$1"':"
+        echo "Hello $user, Select what you want to do in Database '"$1"':"
         echo "1) Select Table."
         echo "2) View Tables."
         echo "3) Return to Main Menu."
@@ -361,7 +361,7 @@ crud_menu_write() {
 
     while true; do
         clear
-        echo "Select what you want to do in '$(basename $2)' table :"
+        echo "Hello $user,Select what you want to do in '$(basename $2)' table :"
         echo "1) Insert Record"
         echo "2) Delete Record"
         echo "3) Update Record"
@@ -415,7 +415,7 @@ crud_menu_read() {
 
     while true; do
         clear
-        echo "Select what you want to do in '$(basename $2)' table :"
+        echo "Hello $user, Select what you want to do in '$(basename $2)' table :"
         echo "1) Select Record"
         echo "2) Show All Records"
         echo "3) Exit"
