@@ -18,8 +18,9 @@ dbs_path="$(dirname "$0")/.DBs"
 
 # Initialize Credentials Directory
 auth_path="$(dirname "$0")/.Credentials"
-[[ ! -e "$auth_path/root" ]] && {
-    mkdir -p "$auth_path"
+[[ ! -e "$auth_path/users/root" ]] && {
+    mkdir -p "$auth_path/users"
+    mkdir -p "$auth_path/groups"
     echo "Welcome to our DBMS"
     while true; do
         clear_buffer
@@ -40,9 +41,9 @@ auth_path="$(dirname "$0")/.Credentials"
     root_salt=$(openssl rand -base64 16)
     root_hashed_password=$(hash_password "$pass1" "$root_salt")
 
-    echo "username:root" >>"$auth_path/root"
-    echo "pass:$root_salt:$root_hashed_password" >>"$auth_path/root"
-    echo "created_at:$(date)" >>"$auth_path/root"
+    echo "username:root" >>"$auth_path/users/root"
+    echo "pass:$root_salt:$root_hashed_password" >>"$auth_path/users/root"
+    echo "created_at:$(date)" >>"$auth_path/users/root"
 
     unset root_salt root_hashed_password pass1 pass2
 }
@@ -50,8 +51,11 @@ auth_path="$(dirname "$0")/.Credentials"
 # Initialize Logs Directory
 logs_path="$(dirname "$0")/.Logs"
 [[ ! -e "$logs_path" ]] && {
-    mkdir "$logs_path"
-    echo "root created at $(date)" >>"$logs_path/.root"
+    mkdir -p "$logs_path/users"
+    mkdir -p "$logs_path/groups"
+    mkdir -p "$logs_path/dbs"
+    mkdir -p "$logs_path/tables"
+    echo "root created at $(date)" >>"$logs_path/users/.root"
 }
 
 # Initialize temp metadata Directory
