@@ -1,0 +1,65 @@
+#!/bin/bash
+########################################################################################
+# imports:
+##########
+source "$(dirname "$0")"/scripts/auth
+source "$(dirname "$0")"/scripts/menu
+source "$(dirname "$0")"/scripts/db_table
+source "$(dirname "$0")"/scripts/crud
+source "$(dirname "$0")"/scripts/init
+source "$(dirname "$0")"/scripts/validation
+source "$(dirname "$0")"/scripts/utils
+
+########################################################################################
+
+# Initialize Parent Directory
+dbs_path="$(dirname "$0")/.DBs"
+[[ ! -e "$dbs_path" ]] && mkdir "$dbs_path"
+
+# Initialize Credentials Directory
+auth_path="$(dirname "$0")/.Credentials"
+[[ ! -e "$auth_path/users/root" ]] && {
+    mkdir -p "$auth_path/users"
+    mkdir -p "$auth_path/groups"
+    echo "Welcome to our DBMS"
+    while true; do
+        clear_buffer
+        read -r -s -p "Please enter root password: " pass1
+        [[ -z "$pass1" ]] && {
+            echo -e "\nPassword cannot be whitespace."
+            return 1
+        }
+        echo
+        clear_buffer
+        read -r -s -p "Please enter root password again: " pass2
+        echo
+
+        [[ $pass1 == $pass2 ]] && echo -e "\nRoot initialized successfuly" && break
+        echo -e "\nPasswords does not match. Please try again."
+    done
+
+    root_salt=$(openssl rand -base64 16)
+    root_hashed_password=$(hash_password "$pass1" "$root_salt")
+
+    echo "username:root" >>"$auth_path/users/root"
+    echo "pass:$root_salt:$root_hashed_password" >>"$auth_path/users/root"
+    echo "created_at:$(date)" >>"$auth_path/users/root"
+
+    unset root_salt root_hashed_password pass1 pass2
+}
+
+# Initialize Logs Directory
+logs_path="$(dirname "$0")/.Logs"
+[[ ! -e "$logs_path" ]] && {
+    mkdir -p "$logs_path/users"
+    mkdir -p "$logs_path/groups"
+    mkdir -p "$logs_path/dbs"
+    mkdir -p "$logs_path/tables"
+    echo "root created at $(date)" >>"$logs_path/users/.root"
+}
+
+# Initialize temp metadata Directory
+temp_path="$(dirname "$0")/.temp"
+[[ ! -e "$temp_path" ]] && mkdir "$temp_path"
+
+auth_menu
