@@ -81,12 +81,15 @@ key_init() {
 
 # $1: Metadata File
 # $2: user or group to check
+# $3: 'users', 'groups'
 add_name() {
-    awk -F':' -v tocheck="$2" '
+    awk -F':' -v tocheck="$2" -v type="$3" '
     {
-        for (i = 3; i <= NF; i++) {
-            if ($i == tocheck) {
-                exit 1
+         if ($2 == type) {
+            for (i = 3; i <= NF; i++) {
+                if ($i == tocheck) {
+                    exit 1
+                }
             }
         }
     }' "$1"
@@ -119,7 +122,7 @@ include_exclude() {
             echo "${4%s} does not exist"
             continue
         }
-        if add_name "$1" "$name"; then
+        if add_name "$1" "$name" "$4"; then
             echo "permission added succesfully."
             echo -n ":$name" >>"$1"
         else
@@ -167,16 +170,16 @@ set_permissions() {
 # $2: Table to be created
 table_init() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] || {
-        if [[ "$user" == 'guest' ]]; then
+        if [[ "$user" == 'Guest' ]]; then
             echo "Table '$2' is not initialized"
             sleep 2
             return 1
         fi
 
         user_perm=$(check_permissions "$1/.$2" "$user" 'users')
-        mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$1/.$2")
+        mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$auth_path/users/$user")
         group_perm_func "$1/.$2" "$user_groups"
-        gruop_perm=$?
+        group_perm=$?
 
         if [[ "$permissions_value" == 'private' ]]; then
             [[ "$user_perm" != 'write' && $group_perm -lt 2 ]] && echo "you don't have permission" && sleep 2 && return 1

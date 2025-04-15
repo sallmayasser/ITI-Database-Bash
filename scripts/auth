@@ -11,11 +11,11 @@ logout_func() {
     user="Guest"
 }
 
-# $1: 'user': user, 'group': group
+# $1: 'user', 'group'
 login_func() {
     clear
     clear_buffer
-    read -r -p "Please enter your $1 name: " name && name=$(trim_tolower "$name")
+    read -r -p "Please enter your $1 name: " name && name=$(stringify "$name")
     [[ -z "$name" ]] && {
         echo -e "\nName cannot be whitespace."
         return 1
@@ -39,9 +39,9 @@ login_func() {
         return 1
     fi
 
-    local user_data=$(grep "^pass:" "$auth_path/${1}s/$name")
-    local stored_salt=$(echo "$user_data" | cut -d ':' -f2)
-    local stored_hash=$(echo "$user_data" | cut -d ':' -f3)
+    local data=$(grep "^pass:" "$auth_path/${1}s/$name")
+    local stored_salt=$(echo "$data" | cut -d ':' -f2)
+    local stored_hash=$(echo "$data" | cut -d ':' -f3)
     local entered_hash=$(hash_password "$pass" "$stored_salt")
 
     if [[ ! -e "$auth_path/${1}s/$name" || "$entered_hash" != "$stored_hash" ]]; then
@@ -77,17 +77,17 @@ login_func() {
     fi
 }
 
-# $1: 'user': user, 'group': group
+# $1: 'user', 'group'
 register_func() {
     clear
     clear_buffer
-    read -r -p "Please enter your $1 name: " name && name=$(trim_tolower "$name")
+    read -r -p "Please enter your $1 name: " name && name=$(stringify "$name")
 
     [[ -z "$name" ]] && {
         echo -e "\nName cannot be whitespace."
         return 1
     }
-    [[ "$name" == 'guest' || "$name" == 'root' ]] && {
+    [[ "$name" == 'Guest' || "$name" == 'root' ]] && {
         echo -e "\nName cannot be '$name'."
         return 1
     }
@@ -193,7 +193,7 @@ group_menu() {
 }
 
 user_menu() {
-    while true; do
+    while [[ "$user" != 'Guest' ]]; do
         clear
         echo "Welcome $user"
         echo "1) DBMS"
@@ -209,8 +209,6 @@ user_menu() {
         case "$choice" in
         1)
             db_menu
-            logout_func
-            return 0
             ;;
         2)
             group_menu
@@ -240,7 +238,7 @@ user_menu() {
 }
 
 root_menu() {
-    while true; do
+    while [[ "$user" != 'Guest' ]]; do
         clear
         echo "Welcome root"
         echo "1) DBMS"
@@ -256,8 +254,6 @@ root_menu() {
         case "$choice" in
         1)
             db_menu
-            logout_func
-            return 0
             ;;
         2)
             for group in "$auth_path"/.*; do
@@ -269,8 +265,11 @@ root_menu() {
             ;;
         3)
             echo -e "Logs:\n####\n"
-            for logs in "$logs_path"/* "$logs_path"/.*; do
-                [ -f "$logs" ] && cat "$logs_path/$logs" && echo
+            for logs_types in "$logs_path"/*; do
+                for logs in $(ls -A "$logs_types"); do
+                    cat "$logs_types/$logs"
+                    echo "--------------------------------"
+                done
             done
             clear_buffer
             read -r -s -n 1 -p "Press any key to continue..."
@@ -299,7 +298,7 @@ auth_menu() {
         echo "Welcome:"
         echo "1) Login"
         echo "2) Register"
-        echo "3) Enter as a guest"
+        echo "3) Enter as a Guest"
         echo "4) Exit"
 
         clear_buffer

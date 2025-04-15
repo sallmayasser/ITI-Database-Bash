@@ -4,18 +4,18 @@
 # redirecting functions:
 ########################
 db_menu() {
-    [[ "$user" != 'guest' ]] && db_menu_write || db_menu_read
+    [[ "$user" != 'Guest' ]] && db_menu_write || db_menu_read
 }
 
 # $1: selected Database
 table_menu() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] && table_menu_write "$1" && return 0
-    [[ "$user" == 'guest' ]] && table_menu_read "$1" && return 0
+    [[ "$user" == 'Guest' ]] && table_menu_read "$1" && return 0
 
     user_perm=$(check_permissions "$dbs_path/.$1" "$user" 'user')
-    mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$dbs_path/.$1")
+    mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$auth_path/users/$user")
     group_perm_func "$dbs_path/.$1" "$user_groups"
-    gruop_perm=$?
+    group_perm=$?
     if [[ "$permissions_value" == 'private' ]]; then
         [[ $group_perm -eq 3 ]] && $group_perm=2
         [[ "$user_perm" == 'write' || $group_perm -eq 2 ]] && table_menu_write "$1" && return 0
@@ -33,12 +33,12 @@ table_menu() {
 # $2: Table Data File
 crud_menu() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] && crud_menu_write "$1" "$2" && return 0
-    [[ "$user" == 'guest' ]] && crud_menu_read "$1" "$2" && return 0
+    [[ "$user" == 'Guest' ]] && crud_menu_read "$1" "$2" && return 0
 
     user_perm=$(check_permissions "$1" "$user" 'user')
-    mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$1")
+    mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$auth_path/users/$user")
     group_perm_func "$1" "$user_groups"
-    gruop_perm=$?
+    group_perm=$?
     if [[ "$permissions_value" == 'private' ]]; then
         [[ $group_perm -eq 3 ]] && $group_perm=2
         [[ "$user_perm" == 'write' || $group_perm -eq 2 ]] && crud_menu_write "$1" "$2" && return 0
@@ -63,8 +63,9 @@ db_menu_write() {
         echo "3) Rename Database."
         echo "4) Delete Database."
         echo "5) View Databases."
-        echo "6) Logout."
-        echo "7) Exit BDMS."
+        echo "6) Back."
+        echo "7) Logout."
+        echo "8) Exit BDMS."
 
         clear_buffer
         read -r -s -n 1 option
@@ -73,13 +74,13 @@ db_menu_write() {
         case $option in
         1)
             clear_buffer
-            read -r -p "Please enter the name of the Database you want to create: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to create: " db_name && db_name=$(stringify "$db_name")
             create "$dbs_path" "$db_name" "db"
             sleep 2
             ;;
         2)
             clear_buffer
-            read -r -p "Please enter the name of the Database you want to select: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to select: " db_name && db_name=$(stringify "$db_name")
             [[ -z "$db_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -97,7 +98,7 @@ db_menu_write() {
             ;;
         3)
             clear_buffer
-            read -r -p "Please enter the name of the Database you want to rename: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to rename: " db_name && db_name=$(stringify "$db_name")
             [[ -z "$db_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -113,7 +114,7 @@ db_menu_write() {
             ;;
         4)
             clear_buffer
-            read -r -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to delete: " db_name && db_name=$(stringify "$db_name")
             delete "$dbs_path" "$db_name" "db"
             sleep 2
             ;;
@@ -128,6 +129,11 @@ db_menu_write() {
             ;;
         6) return 0 ;;
         7)
+            logout_func
+            sleep 2
+            return 0
+            ;;
+        8)
             logout_func
             sleep 2
             exit 0
@@ -146,7 +152,7 @@ db_menu_read() {
         echo "Welcome $user to our DBMS, select what you want to do:"
         echo "1) Select Database."
         echo "2) View Databases."
-        echo "3) Logout."
+        echo "3) Back."
         echo "4) Exit BDMS."
 
         clear_buffer
@@ -156,7 +162,7 @@ db_menu_read() {
         case $option in
         1)
             clear_buffer
-            read -r -p "Please enter the name of the Database you want to select: " db_name && db_name=$(trim_tolower "$db_name")
+            read -r -p "Please enter the name of the Database you want to select: " db_name && db_name=$(stringify "$db_name")
             [[ -z "$db_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -183,7 +189,7 @@ db_menu_read() {
             ;;
         3) return 0 ;;
         4)
-            logout_func
+            echo "Goodbye Guest!"
             sleep 2
             exit 0
             ;;
@@ -215,13 +221,13 @@ table_menu_write() {
         case $option in
         1)
             clear_buffer
-            read -r -p "Please enter the name of the Table you want to create: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to create: " table_name && table_name=$(stringify "$table_name")
             create "$db_path" "$table_name" "table"
             sleep 2
             ;;
         2)
             clear_buffer
-            read -r -p "Please enter the name of the Table you want to select: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to select: " table_name && table_name=$(stringify "$table_name")
             [[ -z "$table_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -239,7 +245,7 @@ table_menu_write() {
             ;;
         3)
             clear_buffer
-            read -r -p "Please enter the name of the Table you want to rename: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to rename: " table_name && table_name=$(stringify "$table_name")
             [[ -z "$table_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
@@ -255,7 +261,7 @@ table_menu_write() {
             ;;
         4)
             clear_buffer
-            read -r -p "Please enter the name of the Table you want to delete: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to delete: " table_name && table_name=$(stringify "$table_name")
             delete "$db_path" "$table_name" "table"
             sleep 2
             ;;
@@ -297,7 +303,7 @@ table_menu_read() {
         case $option in
         1)
             clear_buffer
-            read -r -p "Please enter the name of the Table you want to select: " table_name && table_name=$(trim_tolower "$table_name")
+            read -r -p "Please enter the name of the Table you want to select: " table_name && table_name=$(stringify "$table_name")
             [[ -z "$table_name" ]] && {
                 echo "Name cannot be whitespace"
                 sleep 2
