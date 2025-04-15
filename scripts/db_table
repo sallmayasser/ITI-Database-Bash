@@ -7,7 +7,6 @@
 # $1: Database
 is_empty() {
     [[ -z "$(ls "$1")" ]] && return 0
-
     for item in "$1"/*; do
         [[ $(wc -l <"$item") -gt 1 ]] && return 1
     done
@@ -100,14 +99,15 @@ delete() {
 
     rm -r "$1/$2"
     rm "$1/.$2"
+
     [[ $3 == 'db' ]] && {
         rm -r "$temp_path/$2"
+        rm "$logs_path/dbs/$2"
         echo "user '$user' deleted Database '$2' at $(date)" >>"$logs_path/users/$user"
-        echo "user '$user' deleted Database '$2' at $(date)" >>"$logs_path/dbs/$2"
     }
     [[ $3 == 'table' ]] && {
+        rm "$logs_path/tables/$(basename "$1").$2"
         echo "user '$user' deleted Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/users/$user"
-        echo "user '$user' deleted Table '$2' in Database '$(basename "$1")' at $(date)" >>"$logs_path/tables/$(basename "$1").$2"
     }
 
     echo "'$2' is deleted successfully."
