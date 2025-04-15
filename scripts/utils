@@ -11,24 +11,41 @@ trim_tolower() {
     echo "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[[:space:]]\+/ /g;s/.*/\L&/'
 }
 
-# $1: Metadata File
-# $2: user or group to check
-check_permissions() {
-    awk -F':' -v tocheck="$2" '
-    /^permissions:/ { count = 4; next }
-    count > 0 {
-        for (i = 3; i <= NF; i++) {
-            if ($i == tocheck) {
-                print $1
-                exit 0
-            }
-        }
-        count--
-    }' "$1"
-}
-
 # Function to hash the password with a salt using SHA-256
 hash_password() {
     local password="$1" && local salt="$2"
     echo -n "$password$salt" | openssl dgst -sha256 | awk '{print $2}'
+}
+
+# $1: Metadata File
+# $2: user or group to check
+# $3: 'users': user, 'groups': group
+check_permissions() {
+    awk -F':' -v tocheck="$2" -v type="$3" '
+    /^permissions:/ { count = 4; next }
+    count > 0 {
+        if ($2 == type) {
+            for (i = 3; i <= NF; i++) {
+                if ($i == tocheck) {
+                    print $1
+                    exit 0
+                }
+            }
+        }
+        count--
+    }
+    ' "$1"
+}
+
+# Function to get user's group permissions
+# $?: 0: none, 1: read, 2: write, 3: read/write
+group_perm_func() {
+    metadata=$1 && user_groups=$2
+    read_perm=0 && write_perm=0
+    for user_group in "${user_groups[@]}"; do
+        check_perm=$(check_permissions "$metadata" "$user_group" 'group')
+        [[ $check_perm == 'read' ]] && read_perm=1
+        [[ $check_perm == 'write' ]] && write_perm=1
+    done
+    return $((read_perm + write_perm * 2))
 }

@@ -24,28 +24,27 @@ login_func() {
         echo -e "\nInvalid Name. The name must start with a letter and cannot contain ':' or '/'."
         return 1
     }
-    if [[ $1 == 'group' ]]; then
+    if [[ $1 == 'group' && -e "$auth_path/groups/$name" ]]; then
         if awk -v user="$user" -F ':' '/^members/ {for (i = 2; i <= NF; i++) if ($i == user) exit 0; exit 1}' "$auth_path/groups/$name"; then
             echo -e "\nYou already are a member of the group '$name'."
             return 1
         fi
-        name=".$name"
     fi
 
     clear_buffer
     read -r -s -p "Please enter your $1 password: " pass
 
-    if [[ ! -e "$auth_path/users/$name" || -z "$pass" ]]; then
+    if [[ ! -e "$auth_path/${1}s/$name" || -z "$pass" ]]; then
         echo -e "\nInvalid $1 name or password."
         return 1
     fi
 
-    local user_data=$(grep "^pass:" "$auth_path/users/$name")
+    local user_data=$(grep "^pass:" "$auth_path/${1}s/$name")
     local stored_salt=$(echo "$user_data" | cut -d ':' -f2)
     local stored_hash=$(echo "$user_data" | cut -d ':' -f3)
     local entered_hash=$(hash_password "$pass" "$stored_salt")
 
-    if [[ ! -e "$auth_path/users/$name" || "$entered_hash" != "$stored_hash" ]]; then
+    if [[ ! -e "$auth_path/${1}s/$name" || "$entered_hash" != "$stored_hash" ]]; then
         echo -e "\nInvalid $1 name or password."
         return 1
     fi
@@ -61,13 +60,13 @@ login_func() {
         fi
         echo -e "\nuser is already logged in" && return 1
     elif [[ $1 == 'group' ]]; then
-        members_md=$(awk '/^members/ {print NR}' "$auth_path/users/$name")
-        sed -i "${members_md}s/$/:$user/" "$auth_path/users/$name"
-        updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/users/$name")
-        [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/users/$name" || echo "updated_at:$(date)" >>"$auth_path/users/$name"
+        members_md=$(awk '/^members/ {print NR}' "$auth_path/groups/$name")
+        sed -i "${members_md}s/$/:$user/" "$auth_path/groups/$name"
+        updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/groups/$name")
+        [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/groups/$name" || echo "updated_at:$(date)" >>"$auth_path/groups/$name"
 
         groups_md=$(awk '/^groups/ {print NR}' "$auth_path/users/$user")
-        sed -i "${groups_md}s/$/:${name#.}/" "$auth_path/users/$user"
+        sed -i "${groups_md}s/$/:$name/" "$auth_path/users/$user"
         updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/users/$user")
         [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/users/$user" || echo "updated_at:$(date)" >>"$auth_path/users/$user"
 
@@ -96,11 +95,11 @@ register_func() {
         echo -e "\nInvalid Name. The name must start with a letter and cannot contain ':' or '/'."
         return 1
     }
-    [[ -e "$auth_path/users/$name" ]] && {
+    [[ -e "$auth_path/users/$name" ]] && $1 == 'user' && {
         echo -e "\nuser '$name' already exists."
         return 1
     }
-    [[ -e "$auth_path/groups/$name" ]] && {
+    [[ -e "$auth_path/groups/$name" ]] && $1 == 'group' && {
         echo -e "\ngroup '$name' already exists."
         return 1
     }
@@ -134,15 +133,14 @@ register_func() {
         echo "owner:$user" >>"$auth_path/groups/$name"
         echo "members:$user" >>"$auth_path/groups/$name"
         echo "created_by:$user" >>"$auth_path/groups/$name"
-        echo "user '$user' created group '$name' at $(date)" >>"$logs_path/groups/.$name"
+        echo "user '$user' created group '$name' at $(date)" >>"$logs_path/groups/$name"
         echo "user '$user' created group '$name' at $(date)" >>"$logs_path/users/$user"
 
         groups_md=$(awk '/^groups/ {print NR}' "$auth_path/users/$user")
         sed -i "${groups_md}s/$/:$name/" "$auth_path/users/$user"
 
         updated_at_md=$(awk '/^updated_at/ {print NR}' "$auth_path/users/$user")
-        [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/users/$user"
-        [[ -z $updated_at_md ]] && echo "updated_at:$(date)" >>"$auth_path/users/$user"
+        [[ -n $updated_at_md ]] && sed -i "${updated_at_md}s/updated_at:.*/updated_at:$(date)/" "$auth_path/users/$user" || echo "updated_at:$(date)" >>"$auth_path/users/$user"
     fi
 
     unset pass1 pass2
@@ -154,7 +152,7 @@ register_func() {
 mygroups() {
     clear
     echo -e "A menu where you can edit and remove your groups\n"
-    awk -F ':' -v metadata="$auth_path/users/$user" '/^groups/ {for (i=2; i<=NF; i++) print $i}' metadata
+    awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$auth_path/users/$user"
     clear_buffer
     read -r -s -n 1 -p "Press any key to continue..."
     return 0

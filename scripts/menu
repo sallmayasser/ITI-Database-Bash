@@ -1,23 +1,6 @@
 #!/usr/bin/bash
 ########################################################################################
 
-# helper functions:
-###################
-
-# $?: 0: none, 1: read, 2: write, 3: read/write
-group_perm_func() {
-    metadata=$1 && user_groups=$2
-    read_perm=0 && write_perm=0
-    for user_group in "${user_groups[@]}"; do
-        check_perm=$(check_permissions "$metadata" ".$user_group")
-        [[ $check_perm == 'read' ]] && read_perm=1
-        [[ $check_perm == 'write' ]] && write_perm=1
-    done
-    return $((read_perm + write_perm * 2))
-}
-
-########################################################################################
-
 # redirecting functions:
 ########################
 db_menu() {
@@ -29,7 +12,7 @@ table_menu() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] && table_menu_write "$1" && return 0
     [[ "$user" == 'guest' ]] && table_menu_read "$1" && return 0
 
-    user_perm=$(check_permissions "$dbs_path/.$1" "$user")
+    user_perm=$(check_permissions "$dbs_path/.$1" "$user" 'user')
     mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$dbs_path/.$1")
     group_perm_func "$dbs_path/.$1" "$user_groups"
     gruop_perm=$?
@@ -52,7 +35,7 @@ crud_menu() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] && crud_menu_write "$1" "$2" && return 0
     [[ "$user" == 'guest' ]] && crud_menu_read "$1" "$2" && return 0
 
-    user_perm=$(check_permissions "$1" "$user")
+    user_perm=$(check_permissions "$1" "$user" 'user')
     mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$1")
     group_perm_func "$1" "$user_groups"
     gruop_perm=$?
@@ -286,7 +269,7 @@ table_menu_write() {
             read -r -s -n 1 -p "Press any key to continue..."
             ;;
         6)
-            db_path=''
+            unset db_path
             return 0
             ;;
         *)
@@ -340,7 +323,7 @@ table_menu_read() {
             read -r -s -n 1 -p "Press any key to continue..."
             ;;
         3)
-            db_path=''
+            unset db_path
             return 0
             ;;
         *)
@@ -357,11 +340,11 @@ crud_menu_write() {
     rows_md=$(awk '/^rows/ {print NR}' "$1")
     pk_md=$(awk '/^pk/ {print NR}' "$1")
     updated_at_md=$(awk '/^updated_at/ {print NR}' "$1")
-    col_name=''
+    unset col_name
 
     while true; do
         clear
-        echo "Hello $user,Select what you want to do in '$(basename $2)' table :"
+        echo "Hello $user, Select what you want to do in '$(basename "$2")' table:"
         echo "1) Insert Record"
         echo "2) Delete Record"
         echo "3) Update Record"
@@ -411,11 +394,11 @@ crud_menu_read() {
     rows_md=$(awk '/^rows/ {print NR}' "$1")
     pk_md=$(awk '/^pk/ {print NR}' "$1")
     updated_at_md=$(awk '/^updated_at/ {print NR}' "$1")
-    col_name=''
+    unset col_name
 
     while true; do
         clear
-        echo "Hello $user, Select what you want to do in '$(basename $2)' table :"
+        echo "Hello $user, Select what you want to do in '$(basename "$2")' table:"
         echo "1) Select Record"
         echo "2) Show All Records"
         echo "3) Exit"
