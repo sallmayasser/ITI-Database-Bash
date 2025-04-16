@@ -1,4 +1,4 @@
-# 🚀 Project Name
+# 🚀 DBMS project 
 
 ## 📌 Description
 This project aims to develop a simple Database Management System (DBMS) using Bash shell scripting, allowing users to store and retrieve data from a hard disk. The system will operate through a command-line interface (CLI) menu, providing various options for managing databases and tables.
