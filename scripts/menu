@@ -12,7 +12,7 @@ table_menu() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] && table_menu_write "$1" && return 0
     [[ "$user" == 'Guest' ]] && table_menu_read "$1" && return 0
 
-    user_perm=$(check_permissions "$dbs_path/.$1" "$user" 'user')
+    user_perm=$(check_permissions "$dbs_path/.$1" "$user" 'users')
     mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$auth_path/users/$user")
     group_perm_func "$dbs_path/.$1" "$user_groups"
     group_perm=$?
@@ -35,7 +35,7 @@ crud_menu() {
     [[ "$user" == 'root' || "$user" == "$owner" ]] && crud_menu_write "$1" "$2" && return 0
     [[ "$user" == 'Guest' ]] && crud_menu_read "$1" "$2" && return 0
 
-    user_perm=$(check_permissions "$1" "$user" 'user')
+    user_perm=$(check_permissions "$1" "$user" 'users')
     mapfile -t user_groups < <(awk -F ':' '/^groups/ {for (i=2; i<=NF; i++) print $i}' "$auth_path/users/$user")
     group_perm_func "$1" "$user_groups"
     group_perm=$?
@@ -353,7 +353,7 @@ crud_menu_write() {
         echo "Hello $user, Select what you want to do in '$(basename "$2")' table:"
         echo "1) Insert Record"
         echo "2) Delete Record"
-        echo "3) Update Record"
+        echo "3) Replace Record"
         echo "4) Select Record"
         echo "5) Show All Records"
         echo "6) Exit"
@@ -371,7 +371,7 @@ crud_menu_write() {
             sleep 2
             ;;
         3)
-            update_record "$1" "$2"
+            replace_record "$1" "$2"
             sleep 2
             ;;
         4)

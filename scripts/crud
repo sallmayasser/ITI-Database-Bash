@@ -218,12 +218,12 @@ delete_record() {
     echo -e "\nRecord(s) deleted successfully!"
 }
 
-update_record() {
+replace_record() {
     local meta_file="$1"
     local table_file="$2"
 
     clear
-    echo "Welcome to the record/s updating wizard!"
+    echo "Welcome to the record/s replace wizard!"
     echo "*****************************************"
 
     clear_buffer

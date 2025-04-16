@@ -101,14 +101,14 @@ add_name() {
 # $4: 'users', 'groups'
 include_exclude() {
     clear
-    echo "Type the $4 you want to $2 in $(basename $3) permission, type '/' to finish."
+    echo "Type the $4 you want to $2 in $3 permission, type '/' to finish."
     [[ $2 == 'include' ]] && [[ $3 == 'write' ]] && echo "include write permissions will automatically include read permissions"
     [[ $2 == 'exclude' ]] && [[ $3 == 'read' ]] && echo "exclude read permissions will automatically exclude write permissions"
     echo -n "$3:$4" >>"$1"
     while true; do
         echo
         clear_buffer
-        read -r -p "${4%s} to be ${2}d: " name
+        read -r -p "${4%s} to be ${2}d: " name && name=$(stringfy "$name")
         [[ $name == '/' ]] && break
         [[ -z "$name" ]] && {
             echo "${4%s} name cannot be whitespace"
@@ -169,6 +169,7 @@ set_permissions() {
 # $1: Database Path
 # $2: Table to be created
 table_init() {
+    clear
     [[ "$user" == 'root' || "$user" == "$owner" ]] || {
         if [[ "$user" == 'Guest' ]]; then
             echo "Table '$2' is not initialized"
@@ -189,7 +190,6 @@ table_init() {
         fi
     }
 
-    clear
     while true; do
         clear_buffer
         read -r -p "Please enter number of columns: " colNum
