@@ -108,7 +108,7 @@ include_exclude() {
     while true; do
         echo
         clear_buffer
-        read -r -p "${4%s} to be ${2}d: " name && name=$(stringfy "$name")
+        read -r -p "${4%s} to be ${2}d: " name && name=$(stringify "$name")
         [[ $name == '/' ]] && break
         [[ -z "$name" ]] && {
             echo "${4%s} name cannot be whitespace"
@@ -169,7 +169,6 @@ set_permissions() {
 # $1: Database Path
 # $2: Table to be created
 table_init() {
-    clear
     [[ "$user" == 'root' || "$user" == "$owner" ]] || {
         if [[ "$user" == 'Guest' ]]; then
             echo "Table '$2' is not initialized"
@@ -190,6 +189,7 @@ table_init() {
         fi
     }
 
+    clear
     while true; do
         clear_buffer
         read -r -p "Please enter number of columns: " colNum
