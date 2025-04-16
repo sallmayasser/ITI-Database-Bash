@@ -1,22 +1,3 @@
-## Important Information
-
-The final submission for this project was made before the deadline. To easily access the version that was submitted, please use the `submission-deadline` tag.
-
-### How to access the submission:
-
-1. Clone or pull the latest version of the repository:
-    ```bash
-    git clone https://github.com/AdhamBasheir/ITI-Database-Bash
-    ```
-
-2. Switch to the commit tagged as `submission-deadline` to see the version of the project submitted before the deadline:
-    ```bash
-    git switch --detach submission-deadline
-    ```
-
-3. After switching to the tag, the project will be in the state it was at the time of submission.
-
-
 # 🚀 Project Name
 
 ## 📌 Description
@@ -109,6 +90,22 @@ For specific operations:
 ./crud.sh        # 📝 CRUD operations
 ./menu.sh        # 📋 Menu handling
 ```
+### Important Information
 
+The final submission for this project was made before the deadline. To easily access the version that was submitted, please use the `submission-deadline` tag.
+
+#### How to access the submission:
+
+1. Clone or pull the latest version of the repository:
+    ```bash
+    git clone https://github.com/AdhamBasheir/ITI-Database-Bash
+    ```
+
+2. Switch to the commit tagged as `submission-deadline` to see the version of the project submitted before the deadline:
+    ```bash
+    git switch --detach submission-deadline
+    ```
+
+3. After switching to the tag, the project will be in the state it was at the time of submission.
 
 
